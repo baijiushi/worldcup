@@ -1,0 +1,1478 @@
+import React, { useMemo, useState } from "react";
+import {
+  CalendarDays,
+  CheckCircle2,
+  Crown,
+  Flame,
+  Home,
+  Lock,
+  Medal,
+  Plus,
+  Search,
+  Settings,
+  ShieldCheck,
+  Trophy,
+  Unlock,
+  Users,
+  XCircle,
+} from "lucide-react";
+import {
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+
+const STAGES = {
+  GROUP: { label: "小组赛", multiplier: 1 },
+  R32: { label: "32强赛", multiplier: 2 },
+  R16: { label: "16强赛", multiplier: 2 },
+  QF: { label: "8进4 / 四分之一决赛", multiplier: 4 },
+  SF: { label: "4进2 / 半决赛", multiplier: 8 },
+  THIRD: { label: "三四名决赛", multiplier: 8 },
+  FINAL: { label: "决赛", multiplier: 16 },
+};
+
+const TEAM_FLAGS = {
+  墨西哥: "🇲🇽",
+  南非: "🇿🇦",
+  韩国: "🇰🇷",
+  捷克: "🇨🇿",
+  加拿大: "🇨🇦",
+  波黑: "🇧🇦",
+  美国: "🇺🇸",
+  巴拉圭: "🇵🇾",
+  卡塔尔: "🇶🇦",
+  瑞士: "🇨🇭",
+  巴西: "🇧🇷",
+  摩洛哥: "🇲🇦",
+  海地: "🇭🇹",
+  苏格兰: "🏴",
+  澳大利亚: "🇦🇺",
+  土耳其: "🇹🇷",
+  德国: "🇩🇪",
+  库拉索: "🇨🇼",
+  荷兰: "🇳🇱",
+  日本: "🇯🇵",
+  科特迪瓦: "🇨🇮",
+  厄瓜多尔: "🇪🇨",
+  瑞典: "🇸🇪",
+  突尼斯: "🇹🇳",
+  沙特阿拉伯: "🇸🇦",
+  乌拉圭: "🇺🇾",
+  西班牙: "🇪🇸",
+  佛得角: "🇨🇻",
+  伊朗: "🇮🇷",
+  新西兰: "🇳🇿",
+  比利时: "🇧🇪",
+  埃及: "🇪🇬",
+  法国: "🇫🇷",
+  塞内加尔: "🇸🇳",
+  伊拉克: "🇮🇶",
+  挪威: "🇳🇴",
+  阿根廷: "🇦🇷",
+  阿尔及利亚: "🇩🇿",
+  奥地利: "🇦🇹",
+  约旦: "🇯🇴",
+  英格兰: "🏴",
+  克罗地亚: "🇭🇷",
+  加纳: "🇬🇭",
+  巴拿马: "🇵🇦",
+  葡萄牙: "🇵🇹",
+  刚果民主共和国: "🇨🇩",
+  乌兹别克斯坦: "🇺🇿",
+  哥伦比亚: "🇨🇴",
+};
+
+const initialPlayers = [
+  { id: "p1", name: "Oscar", avatar: "🦊", joinedAt: "2026-05-01T09:00:00" },
+  { id: "p2", name: "阿伟", avatar: "🐯", joinedAt: "2026-05-02T09:00:00" },
+  { id: "p3", name: "小王", avatar: "🐼", joinedAt: "2026-05-03T09:00:00" },
+  { id: "p4", name: "老张", avatar: "🦁", joinedAt: "2026-05-04T09:00:00" },
+];
+
+const initialMatches = [
+  { id: "m1", no: 1, stage: "GROUP", group: "A组", home: "墨西哥", away: "南非", kickoff: "2026-06-12T03:00:00+08:00", status: "open", homeScore: null, awayScore: null },
+  { id: "m2", no: 2, stage: "GROUP", group: "A组", home: "加拿大", away: "日本", kickoff: "2026-06-12T08:00:00+08:00", status: "open", homeScore: null, awayScore: null },
+  { id: "m3", no: 3, stage: "GROUP", group: "B组", home: "巴西", away: "克罗地亚", kickoff: "2026-06-13T03:00:00+08:00", status: "open", homeScore: null, awayScore: null },
+  { id: "m4", no: 4, stage: "GROUP", group: "C组", home: "阿根廷", away: "法国", kickoff: "2026-06-14T03:00:00+08:00", status: "settled", homeScore: 2, awayScore: 1 },
+  { id: "m5", no: 65, stage: "R16", group: "淘汰赛", home: "葡萄牙", away: "乌拉圭", kickoff: "2026-07-05T03:00:00+08:00", status: "settled", homeScore: 1, awayScore: 1 },
+  { id: "m6", no: 77, stage: "QF", group: "淘汰赛", home: "英格兰", away: "荷兰", kickoff: "2026-07-10T03:00:00+08:00", status: "open", homeScore: null, awayScore: null },
+  { id: "m7", no: 101, stage: "SF", group: "淘汰赛", home: "德国", away: "西班牙", kickoff: "2026-07-15T03:00:00+08:00", status: "open", homeScore: null, awayScore: null },
+  { id: "m8", no: 103, stage: "THIRD", group: "三四名决赛", home: "半决赛负者A", away: "半决赛负者B", kickoff: "2026-07-19T03:00:00+08:00", status: "open", homeScore: null, awayScore: null },
+  { id: "m9", no: 104, stage: "FINAL", group: "决赛", home: "半决赛胜者A", away: "半决赛胜者B", kickoff: "2026-07-20T03:00:00+08:00", status: "open", homeScore: null, awayScore: null },
+];
+
+const scheduleRows = [
+  [1, "A组", "墨西哥", "南非", "2026-06-12T03:00:00+08:00", "墨西哥城体育场（阿兹特克体育场）", "墨西哥城"],
+  [2, "A组", "韩国", "捷克", "2026-06-12T10:00:00+08:00", "瓜达拉哈拉体育场（阿克伦体育场）", "萨波潘"],
+  [3, "B组", "加拿大", "波黑", "2026-06-13T03:00:00+08:00", "多伦多体育场（BMO球场）", "多伦多"],
+  [4, "D组", "美国", "巴拉圭", "2026-06-13T09:00:00+08:00", "洛杉矶体育场（SoFi体育场）", "洛杉矶"],
+  [8, "B组", "卡塔尔", "瑞士", "2026-06-14T03:00:00+08:00", "旧金山湾区体育场（李维斯体育场）", "圣克拉拉"],
+  [7, "C组", "巴西", "摩洛哥", "2026-06-14T06:00:00+08:00", "纽约/新泽西体育场（大都会人寿体育场）", "东卢瑟福"],
+  [5, "C组", "海地", "苏格兰", "2026-06-14T09:00:00+08:00", "波士顿体育场（吉列体育场）", "福克斯伯勒"],
+  [6, "D组", "澳大利亚", "土耳其", "2026-06-14T12:00:00+08:00", "BC Place体育场", "温哥华"],
+  [10, "E组", "德国", "库拉索", "2026-06-15T01:00:00+08:00", "休斯敦体育场（NRG体育场）", "休斯敦"],
+  [11, "F组", "荷兰", "日本", "2026-06-15T04:00:00+08:00", "达拉斯体育场（AT&T体育场）", "阿灵顿"],
+  [9, "E组", "科特迪瓦", "厄瓜多尔", "2026-06-15T07:00:00+08:00", "费城体育场（林肯金融球场）", "费城"],
+  [12, "F组", "瑞典", "突尼斯", "2026-06-15T10:00:00+08:00", "蒙特雷体育场（BBVA体育场）", "瓜达卢佩"],
+  [14, "H组", "西班牙", "佛得角", "2026-06-16T00:00:00+08:00", "亚特兰大体育场（梅赛德斯-奔驰体育场）", "亚特兰大"],
+  [16, "G组", "比利时", "埃及", "2026-06-16T03:00:00+08:00", "西雅图体育场（流明球场）", "西雅图"],
+  [13, "H组", "沙特阿拉伯", "乌拉圭", "2026-06-16T06:00:00+08:00", "迈阿密体育场（硬石体育场）", "迈阿密花园"],
+  [15, "G组", "伊朗", "新西兰", "2026-06-16T09:00:00+08:00", "洛杉矶体育场（SoFi体育场）", "洛杉矶"],
+  [17, "I组", "法国", "塞内加尔", "2026-06-17T03:00:00+08:00", "纽约/新泽西体育场（大都会人寿体育场）", "东卢瑟福"],
+  [18, "I组", "伊拉克", "挪威", "2026-06-17T06:00:00+08:00", "波士顿体育场（吉列体育场）", "福克斯伯勒"],
+  [19, "J组", "阿根廷", "阿尔及利亚", "2026-06-17T09:00:00+08:00", "堪萨斯城体育场（箭头体育场）", "堪萨斯城"],
+  [20, "J组", "奥地利", "约旦", "2026-06-17T12:00:00+08:00", "旧金山湾区体育场（李维斯体育场）", "圣克拉拉"],
+  [23, "K组", "葡萄牙", "刚果民主共和国", "2026-06-18T01:00:00+08:00", "休斯敦体育场（NRG体育场）", "休斯敦"],
+  [22, "L组", "英格兰", "克罗地亚", "2026-06-18T04:00:00+08:00", "达拉斯体育场（AT&T体育场）", "阿灵顿"],
+  [21, "L组", "加纳", "巴拿马", "2026-06-18T07:00:00+08:00", "多伦多体育场（BMO球场）", "多伦多"],
+  [24, "K组", "乌兹别克斯坦", "哥伦比亚", "2026-06-18T10:00:00+08:00", "墨西哥城体育场（阿兹特克体育场）", "墨西哥城"],
+  [25, "A组", "捷克", "南非", "2026-06-19T00:00:00+08:00", "亚特兰大体育场（梅赛德斯-奔驰体育场）", "亚特兰大"],
+  [26, "B组", "瑞士", "波黑", "2026-06-19T03:00:00+08:00", "洛杉矶体育场（SoFi体育场）", "洛杉矶"],
+  [27, "B组", "加拿大", "卡塔尔", "2026-06-19T06:00:00+08:00", "BC Place体育场", "温哥华"],
+  [28, "A组", "墨西哥", "韩国", "2026-06-19T09:00:00+08:00", "瓜达拉哈拉体育场（阿克伦体育场）", "萨波潘"],
+  [31, "D组", "土耳其", "巴拉圭", "2026-06-19T12:00:00+08:00", "旧金山湾区体育场（李维斯体育场）", "圣克拉拉"],
+  [32, "D组", "美国", "澳大利亚", "2026-06-20T03:00:00+08:00", "西雅图体育场（流明球场）", "西雅图"],
+  [30, "C组", "苏格兰", "摩洛哥", "2026-06-20T06:00:00+08:00", "波士顿体育场（吉列体育场）", "福克斯伯勒"],
+  [29, "C组", "巴西", "海地", "2026-06-20T08:30:00+08:00", "费城体育场（林肯金融球场）", "费城"],
+  [35, "F组", "荷兰", "瑞典", "2026-06-21T01:00:00+08:00", "休斯敦体育场（NRG体育场）", "休斯敦"],
+  [33, "E组", "德国", "科特迪瓦", "2026-06-21T04:00:00+08:00", "多伦多体育场（BMO球场）", "多伦多"],
+  [34, "E组", "厄瓜多尔", "库拉索", "2026-06-21T08:00:00+08:00", "堪萨斯城体育场（箭头体育场）", "堪萨斯城"],
+  [36, "F组", "突尼斯", "日本", "2026-06-21T12:00:00+08:00", "蒙特雷体育场（BBVA体育场）", "瓜达卢佩"],
+  [38, "H组", "西班牙", "沙特阿拉伯", "2026-06-22T00:00:00+08:00", "亚特兰大体育场（梅赛德斯-奔驰体育场）", "亚特兰大"],
+  [39, "G组", "比利时", "伊朗", "2026-06-22T03:00:00+08:00", "洛杉矶体育场（SoFi体育场）", "洛杉矶"],
+  [37, "H组", "乌拉圭", "佛得角", "2026-06-22T06:00:00+08:00", "迈阿密体育场（硬石体育场）", "迈阿密花园"],
+  [40, "G组", "新西兰", "埃及", "2026-06-22T09:00:00+08:00", "BC Place体育场", "温哥华"],
+  [43, "J组", "阿根廷", "奥地利", "2026-06-23T01:00:00+08:00", "达拉斯体育场（AT&T体育场）", "阿灵顿"],
+  [42, "I组", "法国", "伊拉克", "2026-06-23T05:00:00+08:00", "费城体育场（林肯金融球场）", "费城"],
+  [41, "I组", "挪威", "塞内加尔", "2026-06-23T08:00:00+08:00", "纽约/新泽西体育场（大都会人寿体育场）", "东卢瑟福"],
+  [44, "J组", "约旦", "阿尔及利亚", "2026-06-23T11:00:00+08:00", "旧金山湾区体育场（李维斯体育场）", "圣克拉拉"],
+  [47, "K组", "葡萄牙", "乌兹别克斯坦", "2026-06-24T01:00:00+08:00", "休斯敦体育场（NRG体育场）", "休斯敦"],
+  [45, "L组", "英格兰", "加纳", "2026-06-24T04:00:00+08:00", "波士顿体育场（吉列体育场）", "福克斯伯勒"],
+  [46, "L组", "巴拿马", "克罗地亚", "2026-06-24T07:00:00+08:00", "多伦多体育场（BMO球场）", "多伦多"],
+  [48, "K组", "哥伦比亚", "刚果民主共和国", "2026-06-24T10:00:00+08:00", "瓜达拉哈拉体育场（阿克伦体育场）", "萨波潘"],
+  [51, "B组", "瑞士", "加拿大", "2026-06-25T03:00:00+08:00", "BC Place体育场", "温哥华"],
+  [52, "B组", "波黑", "卡塔尔", "2026-06-25T03:00:00+08:00", "西雅图体育场（流明球场）", "西雅图"],
+  [49, "C组", "苏格兰", "巴西", "2026-06-25T06:00:00+08:00", "迈阿密体育场（硬石体育场）", "迈阿密花园"],
+  [50, "C组", "摩洛哥", "海地", "2026-06-25T06:00:00+08:00", "亚特兰大体育场（梅赛德斯-奔驰体育场）", "亚特兰大"],
+  [53, "A组", "捷克", "墨西哥", "2026-06-25T09:00:00+08:00", "墨西哥城体育场（阿兹特克体育场）", "墨西哥城"],
+  [54, "A组", "南非", "韩国", "2026-06-25T09:00:00+08:00", "蒙特雷体育场（BBVA体育场）", "瓜达卢佩"],
+  [55, "E组", "库拉索", "科特迪瓦", "2026-06-26T04:00:00+08:00", "费城体育场（林肯金融球场）", "费城"],
+  [56, "E组", "厄瓜多尔", "德国", "2026-06-26T04:00:00+08:00", "纽约/新泽西体育场（大都会人寿体育场）", "东卢瑟福"],
+  [57, "F组", "日本", "瑞典", "2026-06-26T07:00:00+08:00", "达拉斯体育场（AT&T体育场）", "阿灵顿"],
+  [58, "F组", "突尼斯", "荷兰", "2026-06-26T07:00:00+08:00", "堪萨斯城体育场（箭头体育场）", "堪萨斯城"],
+  [59, "D组", "土耳其", "美国", "2026-06-26T10:00:00+08:00", "洛杉矶体育场（SoFi体育场）", "洛杉矶"],
+  [60, "D组", "巴拉圭", "澳大利亚", "2026-06-26T10:00:00+08:00", "旧金山湾区体育场（李维斯体育场）", "圣克拉拉"],
+  [61, "I组", "挪威", "法国", "2026-06-27T03:00:00+08:00", "波士顿体育场（吉列体育场）", "福克斯伯勒"],
+  [62, "I组", "塞内加尔", "伊拉克", "2026-06-27T03:00:00+08:00", "多伦多体育场（BMO球场）", "多伦多"],
+  [65, "H组", "佛得角", "沙特阿拉伯", "2026-06-27T08:00:00+08:00", "休斯敦体育场（NRG体育场）", "休斯敦"],
+  [66, "H组", "乌拉圭", "西班牙", "2026-06-27T08:00:00+08:00", "瓜达拉哈拉体育场（阿克伦体育场）", "萨波潘"],
+  [63, "G组", "埃及", "伊朗", "2026-06-27T11:00:00+08:00", "西雅图体育场（流明球场）", "西雅图"],
+  [64, "G组", "新西兰", "比利时", "2026-06-27T11:00:00+08:00", "BC Place体育场", "温哥华"],
+  [67, "L组", "巴拿马", "英格兰", "2026-06-28T05:00:00+08:00", "纽约/新泽西体育场（大都会人寿体育场）", "东卢瑟福"],
+  [68, "L组", "克罗地亚", "加纳", "2026-06-28T05:00:00+08:00", "费城体育场（林肯金融球场）", "费城"],
+  [71, "K组", "哥伦比亚", "葡萄牙", "2026-06-28T07:30:00+08:00", "迈阿密体育场（硬石体育场）", "迈阿密花园"],
+  [72, "K组", "刚果民主共和国", "乌兹别克斯坦", "2026-06-28T07:30:00+08:00", "亚特兰大体育场（梅赛德斯-奔驰体育场）", "亚特兰大"],
+  [69, "J组", "阿尔及利亚", "奥地利", "2026-06-28T10:00:00+08:00", "堪萨斯城体育场（箭头体育场）", "堪萨斯城"],
+  [70, "J组", "约旦", "阿根廷", "2026-06-28T10:00:00+08:00", "达拉斯体育场（AT&T体育场）", "阿灵顿"],
+  [73, "32强赛", "A组第二", "B组第二", "2026-06-29T03:00:00+08:00", "洛杉矶体育场（SoFi体育场）", "洛杉矶"],
+  [76, "32强赛", "C组第一", "F组第二", "2026-06-30T01:00:00+08:00", "休斯敦体育场（NRG体育场）", "休斯敦"],
+  [74, "32强赛", "E组第一", "最佳小组第三（A/B/C/D/F）", "2026-06-30T04:30:00+08:00", "波士顿体育场（吉列体育场）", "福克斯伯勒"],
+  [75, "32强赛", "F组第一", "C组第二", "2026-06-30T09:00:00+08:00", "蒙特雷体育场（BBVA体育场）", "瓜达卢佩"],
+  [78, "32强赛", "E组第二", "I组第二", "2026-07-01T01:00:00+08:00", "达拉斯体育场（AT&T体育场）", "阿灵顿"],
+  [77, "32强赛", "I组第一", "最佳小组第三（C/D/F/G/H）", "2026-07-01T05:00:00+08:00", "纽约/新泽西体育场（大都会人寿体育场）", "东卢瑟福"],
+  [79, "32强赛", "A组第一", "最佳小组第三（C/E/F/H/I）", "2026-07-01T09:00:00+08:00", "墨西哥城体育场（阿兹特克体育场）", "墨西哥城"],
+  [80, "32强赛", "L组第一", "最佳小组第三（E/H/I/J/K）", "2026-07-02T00:00:00+08:00", "亚特兰大体育场（梅赛德斯-奔驰体育场）", "亚特兰大"],
+  [82, "32强赛", "G组第一", "最佳小组第三（A/E/H/I/J）", "2026-07-02T04:00:00+08:00", "西雅图体育场（流明球场）", "西雅图"],
+  [81, "32强赛", "D组第一", "最佳小组第三（B/E/F/I/J）", "2026-07-02T08:00:00+08:00", "旧金山湾区体育场（李维斯体育场）", "圣克拉拉"],
+  [84, "32强赛", "H组第一", "J组第二", "2026-07-03T03:00:00+08:00", "洛杉矶体育场（SoFi体育场）", "洛杉矶"],
+  [83, "32强赛", "K组第二", "L组第二", "2026-07-03T07:00:00+08:00", "多伦多体育场（BMO球场）", "多伦多"],
+  [85, "32强赛", "B组第一", "最佳小组第三（E/F/G/I/J）", "2026-07-03T11:00:00+08:00", "BC Place体育场", "温哥华"],
+  [88, "32强赛", "D组第二", "G组第二", "2026-07-04T02:00:00+08:00", "达拉斯体育场（AT&T体育场）", "阿灵顿"],
+  [86, "32强赛", "J组第一", "H组第二", "2026-07-04T06:00:00+08:00", "迈阿密体育场（硬石体育场）", "迈阿密花园"],
+  [87, "32强赛", "K组第一", "最佳小组第三（D/E/I/J/L）", "2026-07-04T09:30:00+08:00", "堪萨斯城体育场（箭头体育场）", "堪萨斯城"],
+  [90, "16强赛", "第73场胜者", "第75场胜者", "2026-07-05T01:00:00+08:00", "休斯敦体育场（NRG体育场）", "休斯敦"],
+  [89, "16强赛", "第74场胜者", "第77场胜者", "2026-07-05T05:00:00+08:00", "费城体育场（林肯金融球场）", "费城"],
+  [91, "16强赛", "第76场胜者", "第78场胜者", "2026-07-06T04:00:00+08:00", "纽约/新泽西体育场（大都会人寿体育场）", "东卢瑟福"],
+  [92, "16强赛", "第79场胜者", "第80场胜者", "2026-07-06T08:00:00+08:00", "墨西哥城体育场（阿兹特克体育场）", "墨西哥城"],
+  [93, "16强赛", "第83场胜者", "第84场胜者", "2026-07-07T03:00:00+08:00", "达拉斯体育场（AT&T体育场）", "阿灵顿"],
+  [94, "16强赛", "第81场胜者", "第82场胜者", "2026-07-07T08:00:00+08:00", "西雅图体育场（流明球场）", "西雅图"],
+  [95, "16强赛", "第86场胜者", "第88场胜者", "2026-07-08T00:00:00+08:00", "亚特兰大体育场（梅赛德斯-奔驰体育场）", "亚特兰大"],
+  [96, "16强赛", "第85场胜者", "第87场胜者", "2026-07-08T04:00:00+08:00", "BC Place体育场", "温哥华"],
+  [97, "四分之一决赛", "第89场胜者", "第90场胜者", "2026-07-10T04:00:00+08:00", "波士顿体育场（吉列体育场）", "福克斯伯勒"],
+  [98, "四分之一决赛", "第93场胜者", "第94场胜者", "2026-07-11T03:00:00+08:00", "洛杉矶体育场（SoFi体育场）", "洛杉矶"],
+  [99, "四分之一决赛", "第91场胜者", "第92场胜者", "2026-07-12T05:00:00+08:00", "迈阿密体育场（硬石体育场）", "迈阿密花园"],
+  [100, "四分之一决赛", "第95场胜者", "第96场胜者", "2026-07-12T09:00:00+08:00", "堪萨斯城体育场（箭头体育场）", "堪萨斯城"],
+  [101, "半决赛", "第97场胜者", "第98场胜者", "2026-07-15T03:00:00+08:00", "达拉斯体育场（AT&T体育场）", "阿灵顿"],
+  [102, "半决赛", "第99场胜者", "第100场胜者", "2026-07-16T03:00:00+08:00", "亚特兰大体育场（梅赛德斯-奔驰体育场）", "亚特兰大"],
+  [103, "三四名决赛", "第101场负者", "第102场负者", "2026-07-19T05:00:00+08:00", "迈阿密体育场（硬石体育场）", "迈阿密花园"],
+  [104, "决赛", "第101场胜者", "第102场胜者", "2026-07-20T03:00:00+08:00", "纽约/新泽西体育场（大都会人寿体育场）", "东卢瑟福"],
+];
+
+const COMPLETE_WORLD_CUP_SCHEDULE = scheduleRows.map(([no, group, home, away, kickoff, stadium, city]) => ({ no, group, home, away, kickoff, stadium, city }));
+
+const initialPredictions = [
+  { id: "pr1", playerId: "p1", matchId: "m4", home: 2, away: 1, submittedAt: "2026-06-13T12:00:00" },
+  { id: "pr2", playerId: "p2", matchId: "m4", home: 3, away: 2, submittedAt: "2026-06-13T12:10:00" },
+  { id: "pr3", playerId: "p3", matchId: "m4", home: 1, away: 1, submittedAt: "2026-06-13T12:20:00" },
+  { id: "pr4", playerId: "p4", matchId: "m4", home: 0, away: 1, submittedAt: "2026-06-13T12:25:00" },
+  { id: "pr5", playerId: "p1", matchId: "m5", home: 1, away: 1, submittedAt: "2026-07-04T12:00:00" },
+  { id: "pr6", playerId: "p2", matchId: "m5", home: 2, away: 2, submittedAt: "2026-07-04T12:30:00" },
+  { id: "pr7", playerId: "p3", matchId: "m5", home: 2, away: 1, submittedAt: "2026-07-04T13:00:00" },
+];
+
+const initialFunPredictions = {
+  p1: { champion: "巴西", goldenBoot: "姆巴佩", firstRedCardTeam: "乌拉圭", totalGoals: 178, submittedAt: "2026-05-20T12:00:00" },
+  p2: { champion: "阿根廷", goldenBoot: "梅西", firstRedCardTeam: "阿根廷", totalGoals: 172, submittedAt: "2026-05-20T12:20:00" },
+  p3: { champion: "法国", goldenBoot: "哈兰德", firstRedCardTeam: "塞尔维亚", totalGoals: 185, submittedAt: "2026-05-20T12:30:00" },
+};
+
+const initialFunResults = { champion: "", goldenBoot: "", firstRedCardTeam: "", totalGoals: "" };
+
+const WORLD_CUP_GOAL_REFERENCES = [
+  { edition: "2022 卡塔尔世界杯", goals: 172 },
+  { edition: "2018 俄罗斯世界杯", goals: 169 },
+];
+
+const initialWorldCupResults = {
+  1: { homeScore: 2, awayScore: 1 },
+  7: { homeScore: 3, awayScore: 1 },
+  11: { homeScore: 1, awayScore: 1 },
+};
+
+const achievements = [
+  { id: "firstPrediction", name: "初登赛场", description: "第一次提交比分竞猜", rarity: "普通", target: 1 },
+  { id: "worldCupAudience", name: "世界杯观众席", description: "累计竞猜 30 场", rarity: "稀有", target: 30 },
+  { id: "hardcoreFan", name: "铁杆球迷", description: "小组赛阶段没有漏猜", rarity: "史诗", target: "GROUP_ALL" },
+  { id: "fullAttendance", name: "全勤观赛员", description: "累计竞猜 104 场", rarity: "传说", target: 104 },
+  { id: "knockoutTicket", name: "淘汰赛入场券", description: "第一次竞猜淘汰赛", rarity: "稀有", target: 1 },
+  { id: "finalWitness", name: "决赛见证者", description: "提交决赛竞猜", rarity: "史诗", target: 1 },
+];
+
+const rarityStyles = {
+  普通: "bg-slate-700 text-slate-200",
+  稀有: "bg-sky-500/15 text-sky-200",
+  史诗: "bg-purple-500/15 text-purple-200",
+  传说: "bg-yellow-500/15 text-yellow-200",
+};
+
+const tabs = [
+  { id: "home", label: "首页", icon: Home },
+  { id: "schedule", label: "赛程竞猜", icon: CalendarDays },
+  { id: "completeSchedule", label: "完整赛程", icon: CalendarDays },
+  { id: "worldCupStandings", label: "世界杯排名", icon: Medal },
+  { id: "ranking", label: "竞猜排行榜", icon: Trophy },
+  { id: "fun", label: "趣味预测", icon: Flame },
+  { id: "achievements", label: "成就墙", icon: Crown },
+  { id: "rules", label: "规则", icon: ShieldCheck },
+  { id: "playerProfile", label: "个人主页", icon: Users },
+  { id: "admin", label: "管理", icon: Settings, adminOnly: true },
+];
+
+function teamName(name) {
+  return `${name} ${TEAM_FLAGS[name] || ""}`.trim();
+}
+
+function getOutcome(home, away) {
+  if (home > away) return "H";
+  if (home < away) return "A";
+  return "D";
+}
+
+function isSettledMatch(match) {
+  return Boolean(match && match.status === "settled" && Number.isFinite(match.homeScore) && Number.isFinite(match.awayScore));
+}
+
+function isWorldCupResultSettled(result) {
+  return Boolean(result && Number.isFinite(result.homeScore) && Number.isFinite(result.awayScore));
+}
+
+function calculateBasePoints(prediction, match) {
+  if (!prediction || !isSettledMatch(match)) return 0;
+  if (prediction.home === match.homeScore && prediction.away === match.awayScore) return 4;
+  if (getOutcome(match.homeScore, match.awayScore) !== getOutcome(prediction.home, prediction.away)) return 0;
+  return match.homeScore - match.awayScore === prediction.home - prediction.away ? 2 : 1;
+}
+
+function calculatePoints(prediction, match) {
+  if (!match) return 0;
+  return calculateBasePoints(prediction, match) * (STAGES[match.stage]?.multiplier || 1);
+}
+
+function explainPoints(prediction, match) {
+  if (!prediction) return "未竞猜";
+  if (!isSettledMatch(match)) return "待结算";
+  const base = calculateBasePoints(prediction, match);
+  if (base === 4) return "完全猜中比分";
+  if (base === 2) return "猜中胜平负 + 净胜球";
+  if (base === 1) return "只猜中胜平负";
+  return "完全猜错";
+}
+
+function formatDateTime(value) {
+  return new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Shanghai", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short", hour12: false }).format(new Date(value));
+}
+
+function formatDateOnly(value) {
+  return new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Shanghai", month: "2-digit", day: "2-digit", weekday: "long" }).format(new Date(value));
+}
+
+function getBeijingDateParts(value) {
+  const parts = new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Shanghai", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short", hour12: false }).formatToParts(new Date(value));
+  return Object.fromEntries(parts.map((part) => [part.type, part.value]));
+}
+
+function formatBeijingDateKey(value) {
+  const parts = getBeijingDateParts(value);
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
+function formatBeijingTime(value) {
+  const parts = getBeijingDateParts(value);
+  return `${parts.hour}:${parts.minute}`;
+}
+
+function formatBeijingDateTitle(value) {
+  const parts = getBeijingDateParts(value);
+  return `${parts.month}月${parts.day}日 ${parts.weekday}`;
+}
+
+function isSameBeijingDate(a, b) {
+  return formatBeijingDateKey(a) === formatBeijingDateKey(b);
+}
+
+function isMatchLocked(match, now = new Date()) {
+  return Boolean(match.status !== "open" || new Date(match.kickoff).getTime() <= new Date(now).getTime());
+}
+
+function formatCountdown(kickoff, now = new Date()) {
+  const diff = new Date(kickoff).getTime() - new Date(now).getTime();
+  if (diff <= 0) return "已锁定";
+  const totalMinutes = Math.floor(diff / 60000);
+  const days = Math.floor(totalMinutes / 1440);
+  const hours = Math.floor((totalMinutes % 1440) / 60);
+  const minutes = totalMinutes % 60;
+  if (days > 0) return `${days}天${hours}小时`;
+  if (hours > 0) return `${hours}小时${minutes}分钟`;
+  return `${minutes}分钟`;
+}
+
+function getMostCommonPrediction(playerPredictions) {
+  if (!playerPredictions.length) return "暂无";
+  const counts = playerPredictions.reduce((acc, prediction) => {
+    const key = `${prediction.home}:${prediction.away}`;
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
+  return Object.entries(counts).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0][0];
+}
+
+function getPlayerTitles(player, funPredictions, funResults, predictionStyleRankings, streakRankings, reverseLightPlayer) {
+  const titles = [];
+  const prediction = funPredictions[player.id];
+  const resultTotalGoals = Number(funResults.totalGoals);
+  const allGoalPredictions = Object.values(funPredictions).filter((item) => Number.isFinite(Number(item.totalGoals)) && Number.isFinite(resultTotalGoals));
+  const closestGoalDiff = allGoalPredictions.length ? Math.min(...allGoalPredictions.map((item) => Math.abs(Number(item.totalGoals) - resultTotalGoals))) : null;
+
+  if (prediction && funResults.champion && prediction.champion.trim() === funResults.champion.trim()) titles.push("世界杯导演");
+  if (prediction && funResults.goldenBoot && prediction.goldenBoot.trim() === funResults.goldenBoot.trim()) titles.push("金靴伯乐");
+  if (prediction && funResults.firstRedCardTeam && prediction.firstRedCardTeam.trim() === funResults.firstRedCardTeam.trim()) titles.push("我闻到了火药味");
+  if (prediction && closestGoalDiff !== null && Number.isFinite(resultTotalGoals) && Math.abs(Number(prediction.totalGoals) - resultTotalGoals) === closestGoalDiff) titles.push("进球神算子");
+
+  const titleSources = [
+    [predictionStyleRankings?.exactSnipers, "精准狙击手"],
+    [predictionStyleRankings?.steadyMasters, "稳健大师"],
+    [predictionStyleRankings?.conservativeMasters, "保守大师"],
+    [predictionStyleRankings?.attackingMadmen, "进攻狂魔"],
+    [streakRankings, "大预言家"],
+  ];
+
+  titleSources.forEach(([list, title]) => {
+    const topValue = list?.[0]?.value ?? list?.[0]?.maxStreak ?? 0;
+    const current = list?.find((item) => item.id === player.id);
+    const currentValue = current?.value ?? current?.maxStreak ?? 0;
+    if (currentValue > 0 && currentValue === topValue) titles.push(title);
+  });
+
+  if (reverseLightPlayer?.id === player.id) titles.push("毒奶之王");
+  return [...new Set(titles)];
+}
+
+function getAchievementProgress(achievement, player, predictions, matches) {
+  const playerPredictions = predictions
+    .filter((prediction) => prediction.playerId === player.id)
+    .sort((a, b) => new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime());
+  const getMatch = (prediction) => matches.find((match) => match.id === prediction.matchId);
+
+  if (achievement.id === "firstPrediction") {
+    const first = playerPredictions[0];
+    return { current: Math.min(playerPredictions.length, 1), target: 1, achieved: playerPredictions.length >= 1, achievedAt: first?.submittedAt || null };
+  }
+
+  if (achievement.id === "worldCupAudience") {
+    const target = 30;
+    return { current: Math.min(playerPredictions.length, target), target, achieved: playerPredictions.length >= target, achievedAt: playerPredictions[target - 1]?.submittedAt || null };
+  }
+
+  if (achievement.id === "hardcoreFan") {
+    const groupMatches = matches.filter((match) => match.stage === "GROUP");
+    const groupMatchIds = new Set(groupMatches.map((match) => match.id));
+    const groupPredictions = playerPredictions.filter((prediction) => groupMatchIds.has(prediction.matchId));
+    const predictedGroupIds = new Set(groupPredictions.map((prediction) => prediction.matchId));
+    const target = groupMatches.length || 1;
+    const achieved = groupMatches.length > 0 && predictedGroupIds.size >= groupMatches.length;
+    const latestGroupPrediction = groupPredictions[groupPredictions.length - 1];
+    return { current: Math.min(predictedGroupIds.size, target), target, achieved, achievedAt: achieved ? latestGroupPrediction?.submittedAt || null : null };
+  }
+
+  if (achievement.id === "fullAttendance") {
+    const target = 104;
+    return { current: Math.min(playerPredictions.length, target), target, achieved: playerPredictions.length >= target, achievedAt: playerPredictions[target - 1]?.submittedAt || null };
+  }
+
+  if (achievement.id === "knockoutTicket") {
+    const knockoutPrediction = playerPredictions.find((prediction) => {
+      const match = getMatch(prediction);
+      return match && match.stage !== "GROUP";
+    });
+    return { current: knockoutPrediction ? 1 : 0, target: 1, achieved: Boolean(knockoutPrediction), achievedAt: knockoutPrediction?.submittedAt || null };
+  }
+
+  if (achievement.id === "finalWitness") {
+    const finalPrediction = playerPredictions.find((prediction) => getMatch(prediction)?.stage === "FINAL");
+    return { current: finalPrediction ? 1 : 0, target: 1, achieved: Boolean(finalPrediction), achievedAt: finalPrediction?.submittedAt || null };
+  }
+
+  return { current: 0, target: 1, achieved: false, achievedAt: null };
+}
+
+function getAchievementRoomProgress(achievement, players, predictions, matches) {
+  return players.map((player) => ({
+    player,
+    progress: getAchievementProgress(achievement, player, predictions, matches),
+  }));
+}
+
+function formatAchievementTime(value) {
+  return value ? formatDateTime(value) : "未获得";
+}
+
+function useCurrentTime() {
+  const [now, setNow] = useState(new Date());
+  React.useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 30000);
+    return () => window.clearInterval(timer);
+  }, []);
+  return now;
+}
+
+function groupByDate(matches) {
+  return matches.reduce((acc, match) => {
+    const date = formatDateOnly(match.kickoff);
+    if (!acc[date]) acc[date] = [];
+    acc[date].push(match);
+    return acc;
+  }, {});
+}
+
+function createEmptyTeamStanding(group, team) {
+  return { group, team, played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 0 };
+}
+
+function buildWorldCupStandings(schedule, results) {
+  const groupMatches = schedule.filter((match) => /^[A-L]组$/.test(match.group));
+  const tableMap = new Map();
+
+  groupMatches.forEach((match) => {
+    [match.home, match.away].forEach((team) => {
+      const key = `${match.group}-${team}`;
+      if (!tableMap.has(key)) tableMap.set(key, createEmptyTeamStanding(match.group, team));
+    });
+  });
+
+  groupMatches.forEach((match) => {
+    const result = results[match.no];
+    if (!isWorldCupResultSettled(result)) return;
+
+    const homeKey = `${match.group}-${match.home}`;
+    const awayKey = `${match.group}-${match.away}`;
+    const homeTeam = tableMap.get(homeKey);
+    const awayTeam = tableMap.get(awayKey);
+    if (!homeTeam || !awayTeam) return;
+
+    homeTeam.played += 1;
+    awayTeam.played += 1;
+    homeTeam.goalsFor += result.homeScore;
+    homeTeam.goalsAgainst += result.awayScore;
+    awayTeam.goalsFor += result.awayScore;
+    awayTeam.goalsAgainst += result.homeScore;
+
+    if (result.homeScore > result.awayScore) {
+      homeTeam.won += 1;
+      homeTeam.points += 3;
+      awayTeam.lost += 1;
+    } else if (result.homeScore < result.awayScore) {
+      awayTeam.won += 1;
+      awayTeam.points += 3;
+      homeTeam.lost += 1;
+    } else {
+      homeTeam.drawn += 1;
+      awayTeam.drawn += 1;
+      homeTeam.points += 1;
+      awayTeam.points += 1;
+    }
+
+    homeTeam.goalDifference = homeTeam.goalsFor - homeTeam.goalsAgainst;
+    awayTeam.goalDifference = awayTeam.goalsFor - awayTeam.goalsAgainst;
+  });
+
+  return Array.from(tableMap.values()).reduce((acc, team) => {
+    if (!acc[team.group]) acc[team.group] = [];
+    acc[team.group].push(team);
+    return acc;
+  }, {});
+}
+
+function sortStandingsTable(table) {
+  return [...table].sort((a, b) =>
+    b.points - a.points ||
+    b.goalDifference - a.goalDifference ||
+    b.goalsFor - a.goalsFor ||
+    a.team.localeCompare(b.team, "zh-CN")
+  );
+}
+
+function getQualificationLabel(index) {
+  if (index < 2) return { label: "直接出线区", className: "bg-emerald-500/15 text-emerald-200" };
+  if (index === 2) return { label: "小组第三竞争区", className: "bg-amber-500/15 text-amber-200" };
+  return { label: "待追赶", className: "bg-slate-800 text-slate-400" };
+}
+
+function Pill({ children, className = "" }) {
+  return <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${className}`}>{children}</span>;
+}
+
+function Card({ children, className = "" }) {
+  return <div className={`rounded-2xl border border-slate-700/70 bg-slate-900/80 p-4 shadow-xl ${className}`}>{children}</div>;
+}
+
+function DarkButton({ children, className = "", ...props }) {
+  return <button className={`rounded-xl bg-slate-800 text-slate-100 transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40 ${className}`} {...props}>{children}</button>;
+}
+
+function AvatarBadge({ children, size = "h-10 w-10", text = "text-xl" }) {
+  return <div className={`flex ${size} items-center justify-center rounded-xl border border-slate-700 bg-slate-800 ${text} text-slate-100`}>{children}</div>;
+}
+
+function StatCard({ icon: Icon, label, value, sub }) {
+  return (
+    <Card className="relative overflow-hidden">
+      <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-slate-800/70" />
+      <div className="flex items-center gap-3">
+        <div className="rounded-2xl bg-slate-800 p-3"><Icon className="h-5 w-5" /></div>
+        <div>
+          <div className="text-sm text-slate-400">{label}</div>
+          <div className="text-2xl font-black tracking-tight text-slate-100">{value}</div>
+          {sub && <div className="mt-1 text-xs text-slate-500">{sub}</div>}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function MatchStatus({ match }) {
+  if (match.status === "settled") return <Pill className="bg-emerald-500/15 text-emerald-200">已结算</Pill>;
+  if (isMatchLocked(match)) return <Pill className="bg-amber-500/15 text-amber-200">已锁定</Pill>;
+  return <Pill className="bg-sky-500/15 text-sky-200">可竞猜</Pill>;
+}
+
+function MatchCountdown({ match, now }) {
+  if (match.status === "settled") return <Pill className="bg-emerald-500/15 text-emerald-200">已结束</Pill>;
+  if (isMatchLocked(match, now)) return <Pill className="bg-amber-500/15 text-amber-200">已锁定</Pill>;
+  return <Pill className="bg-cyan-500/15 text-cyan-200">距离锁定：{formatCountdown(match.kickoff, now)}</Pill>;
+}
+
+function MatchScore({ match }) {
+  if (!Number.isFinite(match.homeScore) || !Number.isFinite(match.awayScore)) return <span className="text-slate-500">vs</span>;
+  return <span className="rounded-xl border border-slate-700 bg-slate-800 px-3 py-1 text-base font-black text-slate-100">{match.homeScore} : {match.awayScore}</span>;
+}
+
+export default function WorldCupPredictionMVP() {
+  const [activeTab, setActiveTab] = useState("home");
+  const [players, setPlayers] = useState(initialPlayers);
+  const [currentPlayerId, setCurrentPlayerId] = useState("p1");
+  const [matches, setMatches] = useState(initialMatches);
+  const [predictions, setPredictions] = useState(initialPredictions);
+  const [funPredictions, setFunPredictions] = useState(initialFunPredictions);
+  const [funResults, setFunResults] = useState(initialFunResults);
+  const [worldCupResults, setWorldCupResults] = useState(initialWorldCupResults);
+  const [selectedMatchId, setSelectedMatchId] = useState("m1");
+  const [selectedProfilePlayerId, setSelectedProfilePlayerId] = useState("p1");
+  const [query, setQuery] = useState("");
+  const [stageFilter, setStageFilter] = useState("ALL");
+  const [newPlayerName, setNewPlayerName] = useState("");
+
+  const currentTime = useCurrentTime();
+  const currentPlayer = players.find((p) => p.id === currentPlayerId) || players[0];
+  const profilePlayer = players.find((p) => p.id === selectedProfilePlayerId) || currentPlayer;
+  const isAdmin = currentPlayerId === "p1";
+  const visibleTabs = tabs.filter((tab) => !tab.adminOnly || isAdmin);
+  const selectedMatch = matches.find((m) => m.id === selectedMatchId) || matches[0];
+  const firstKickoff = useMemo(() => matches.reduce((earliest, match) => {
+    const kickoff = new Date(match.kickoff);
+    return kickoff < earliest ? kickoff : earliest;
+  }, new Date(matches[0]?.kickoff || Date.now())), [matches]);
+  const funPredictionLocked = new Date() >= firstKickoff;
+
+  React.useEffect(() => {
+    if (!isAdmin && activeTab === "admin") setActiveTab("home");
+  }, [isAdmin, activeTab]);
+
+  const rankings = useMemo(() => players.map((player) => {
+    const playerPredictions = predictions.filter((p) => p.playerId === player.id);
+    const settledPredictions = playerPredictions.filter((p) => isSettledMatch(matches.find((m) => m.id === p.matchId)));
+    const total = settledPredictions.reduce((sum, p) => sum + calculatePoints(p, matches.find((m) => m.id === p.matchId)), 0);
+    const exactCount = settledPredictions.filter((p) => calculateBasePoints(p, matches.find((m) => m.id === p.matchId)) === 4).length;
+    const outcomeCount = settledPredictions.filter((p) => calculateBasePoints(p, matches.find((m) => m.id === p.matchId)) > 0).length;
+    return { ...player, total, exactCount, outcomeCount, played: playerPredictions.length };
+  }).sort((a, b) => b.total - a.total || b.exactCount - a.exactCount || b.outcomeCount - a.outcomeCount || b.played - a.played || new Date(a.joinedAt).getTime() - new Date(b.joinedAt).getTime()), [players, predictions, matches]);
+
+  const rankingTrend = useMemo(() => {
+    const settledMatches = matches.filter(isSettledMatch).sort((a, b) => new Date(a.kickoff).getTime() - new Date(b.kickoff).getTime());
+    return settledMatches.map((currentMatch, index) => {
+      const includedMatchIds = new Set(settledMatches.slice(0, index + 1).map((m) => m.id));
+      const snapshot = players.map((player) => {
+        const playerPredictions = predictions.filter((p) => p.playerId === player.id && includedMatchIds.has(p.matchId));
+        const total = playerPredictions.reduce((sum, prediction) => sum + calculatePoints(prediction, matches.find((m) => m.id === prediction.matchId)), 0);
+        const exactCount = playerPredictions.filter((prediction) => calculateBasePoints(prediction, matches.find((m) => m.id === prediction.matchId)) === 4).length;
+        const outcomeCount = playerPredictions.filter((prediction) => calculateBasePoints(prediction, matches.find((m) => m.id === prediction.matchId)) > 0).length;
+        return { ...player, total, exactCount, outcomeCount, played: playerPredictions.length };
+      }).sort((a, b) => b.total - a.total || b.exactCount - a.exactCount || b.outcomeCount - a.outcomeCount || b.played - a.played || new Date(a.joinedAt).getTime() - new Date(b.joinedAt).getTime());
+      const row = { label: `第${index + 1}场`, match: `${teamName(currentMatch.home)} ${currentMatch.homeScore}:${currentMatch.awayScore} ${teamName(currentMatch.away)}` };
+      snapshot.forEach((player) => { row[player.id] = player.total; });
+      return row;
+    });
+  }, [players, predictions, matches]);
+
+  const streakRankings = useMemo(() => {
+    const settledMatches = matches.filter(isSettledMatch).sort((a, b) => new Date(a.kickoff).getTime() - new Date(b.kickoff).getTime());
+    return players.map((player) => {
+      let currentStreak = 0;
+      let maxStreak = 0;
+      settledMatches.forEach((match) => {
+        const prediction = predictions.find((p) => p.playerId === player.id && p.matchId === match.id);
+        if (prediction && calculateBasePoints(prediction, match) > 0) {
+          currentStreak += 1;
+          maxStreak = Math.max(maxStreak, currentStreak);
+        } else {
+          currentStreak = 0;
+        }
+      });
+      return { ...player, maxStreak };
+    }).sort((a, b) => b.maxStreak - a.maxStreak || new Date(a.joinedAt).getTime() - new Date(b.joinedAt).getTime());
+  }, [players, predictions, matches]);
+
+  const reverseLightPlayer = useMemo(() => [...rankings].sort((a, b) => a.total - b.total || a.exactCount - b.exactCount || a.outcomeCount - b.outcomeCount || b.played - a.played)[0], [rankings]);
+
+  const dailyBestPlayers = useMemo(() => {
+    const settledMatches = matches.filter(isSettledMatch).sort((a, b) => new Date(a.kickoff).getTime() - new Date(b.kickoff).getTime());
+    const dates = [...new Set(settledMatches.map((match) => formatDateOnly(match.kickoff)))];
+    return dates.map((date) => {
+      const matchesOnDate = settledMatches.filter((match) => formatDateOnly(match.kickoff) === date);
+      const scores = players.map((player) => {
+        const score = matchesOnDate.reduce((sum, match) => {
+          const prediction = predictions.find((p) => p.playerId === player.id && p.matchId === match.id);
+          return sum + calculatePoints(prediction, match);
+        }, 0);
+        return { ...player, score };
+      });
+      const topScore = Math.max(...scores.map((player) => player.score), 0);
+      const winners = topScore > 0 ? scores.filter((player) => player.score === topScore) : [];
+      return { date, matchCount: matchesOnDate.length, topScore, winners };
+    });
+  }, [players, predictions, matches]);
+
+  const predictionStyleRankings = useMemo(() => {
+    const settledMatches = matches.filter(isSettledMatch);
+    const buildRank = (getValue) => players.map((player) => ({ ...player, value: getValue(player) })).sort((a, b) => b.value - a.value || new Date(a.joinedAt).getTime() - new Date(b.joinedAt).getTime());
+    return {
+      exactSnipers: buildRank((player) => settledMatches.filter((match) => {
+        const prediction = predictions.find((p) => p.playerId === player.id && p.matchId === match.id);
+        return prediction && calculateBasePoints(prediction, match) === 4;
+      }).length),
+      steadyMasters: buildRank((player) => settledMatches.filter((match) => {
+        const prediction = predictions.find((p) => p.playerId === player.id && p.matchId === match.id);
+        return prediction && calculateBasePoints(prediction, match) > 0;
+      }).length),
+      conservativeMasters: buildRank((player) => predictions.filter((prediction) => prediction.playerId === player.id && prediction.home === prediction.away).length),
+      attackingMadmen: buildRank((player) => predictions.filter((prediction) => prediction.playerId === player.id && prediction.home + prediction.away >= 4).length),
+    };
+  }, [players, predictions, matches]);
+
+  const myStats = rankings.find((p) => p.id === currentPlayerId);
+  const filteredMatches = useMemo(() => matches.filter((match) => {
+    const text = `${match.home}${match.away}${match.group}${STAGES[match.stage]?.label || ""}`.toLowerCase();
+    return text.includes(query.toLowerCase()) && (stageFilter === "ALL" || match.stage === stageFilter);
+  }), [matches, query, stageFilter]);
+  const groupedMatches = groupByDate(filteredMatches);
+  const unPredictedCount = matches.filter((match) => !predictions.some((p) => p.playerId === currentPlayerId && p.matchId === match.id)).length;
+  const settledCount = matches.filter(isSettledMatch).length;
+  const worldCupStandings = useMemo(() => buildWorldCupStandings(COMPLETE_WORLD_CUP_SCHEDULE, worldCupResults), [worldCupResults]);
+  const worldCupSettledCount = useMemo(() => Object.values(worldCupResults).filter(isWorldCupResultSettled).length, [worldCupResults]);
+
+  function upsertPrediction(matchId, home, away) {
+    const match = matches.find((m) => m.id === matchId);
+    if (!match || isMatchLocked(match, currentTime) || !Number.isFinite(home) || !Number.isFinite(away)) return;
+    const safeHome = Math.max(0, Math.floor(home));
+    const safeAway = Math.max(0, Math.floor(away));
+    setPredictions((prev) => {
+      const existing = prev.find((p) => p.playerId === currentPlayerId && p.matchId === matchId);
+      if (existing) return prev.map((p) => (p.id === existing.id ? { ...p, home: safeHome, away: safeAway, submittedAt: new Date().toISOString() } : p));
+      return [...prev, { id: `pr-${Date.now()}`, playerId: currentPlayerId, matchId, home: safeHome, away: safeAway, submittedAt: new Date().toISOString() }];
+    });
+  }
+
+  function updateMatchResult(matchId, homeScore, awayScore) {
+    if (!Number.isFinite(homeScore) || !Number.isFinite(awayScore)) return;
+    setMatches((prev) => prev.map((m) => m.id === matchId ? { ...m, homeScore: Math.max(0, Math.floor(homeScore)), awayScore: Math.max(0, Math.floor(awayScore)), status: "settled" } : m));
+  }
+
+  function toggleLock(matchId) {
+    setMatches((prev) => prev.map((m) => m.id === matchId ? { ...m, status: m.status === "open" ? "closed" : m.status === "closed" ? "open" : m.status } : m));
+  }
+
+  function addPlayer() {
+    const name = newPlayerName.trim();
+    if (!name) return;
+    const avatars = ["🐺", "🐵", "🐶", "🐱", "🦅", "🐲", "🐰", "🦄"];
+    const newPlayer = { id: `p-${Date.now()}`, name, avatar: avatars[Math.floor(Math.random() * avatars.length)], joinedAt: new Date().toISOString() };
+    setPlayers((prev) => [...prev, newPlayer]);
+    setCurrentPlayerId(newPlayer.id);
+    setNewPlayerName("");
+  }
+
+  function saveFunPrediction(champion, goldenBoot, firstRedCardTeam, totalGoals) {
+    if (funPredictionLocked) return;
+    const cleanChampion = champion.trim();
+    const cleanGoldenBoot = goldenBoot.trim();
+    const cleanFirstRedCardTeam = firstRedCardTeam.trim();
+    const cleanTotalGoalsText = String(totalGoals).trim();
+    const cleanTotalGoals = Number(cleanTotalGoalsText);
+    if (!cleanChampion || !cleanGoldenBoot || !cleanFirstRedCardTeam || !cleanTotalGoalsText || !Number.isFinite(cleanTotalGoals)) return;
+    setFunPredictions((prev) => ({
+      ...prev,
+      [currentPlayerId]: { champion: cleanChampion, goldenBoot: cleanGoldenBoot, firstRedCardTeam: cleanFirstRedCardTeam, totalGoals: cleanTotalGoals, submittedAt: new Date().toISOString() },
+    }));
+  }
+
+  function updateWorldCupResult(matchNo, homeScore, awayScore) {
+    const cleanHomeScore = Number(homeScore);
+    const cleanAwayScore = Number(awayScore);
+    if (!Number.isFinite(cleanHomeScore) || !Number.isFinite(cleanAwayScore)) return;
+    setWorldCupResults((prev) => ({
+      ...prev,
+      [matchNo]: {
+        homeScore: Math.max(0, Math.floor(cleanHomeScore)),
+        awayScore: Math.max(0, Math.floor(cleanAwayScore)),
+      },
+    }));
+  }
+
+  function clearWorldCupResult(matchNo) {
+    setWorldCupResults((prev) => {
+      const next = { ...prev };
+      delete next[matchNo];
+      return next;
+    });
+  }
+
+  function openPlayerProfile(playerId) {
+    setSelectedProfilePlayerId(playerId);
+    setActiveTab("playerProfile");
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100">
+      <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-6 lg:flex-row">
+        <aside className="lg:sticky lg:top-6 lg:h-[calc(100vh-48px)] lg:w-72">
+          <Card className="h-full bg-slate-950/80">
+            <div className="flex items-center gap-3">
+              <AvatarBadge size="h-12 w-12" text="text-xl"><Trophy className="h-7 w-7" /></AvatarBadge>
+              <div><div className="text-lg font-black">世界杯竞猜局</div><div className="text-xs text-slate-500">Oscar&apos;s World Cup Room</div></div>
+            </div>
+            <div className="mt-5 rounded-2xl bg-slate-800/60 p-3">
+              <div className="text-xs text-slate-400">当前玩家</div>
+              <select value={currentPlayerId} onChange={(e) => setCurrentPlayerId(e.target.value)} className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm outline-none">
+                {players.map((player) => <option key={player.id} value={player.id}>{player.avatar} {player.name}</option>)}
+              </select>
+              <div className="mt-3 flex gap-2">
+                <input value={newPlayerName} onChange={(e) => setNewPlayerName(e.target.value)} placeholder="添加朋友昵称" className="min-w-0 flex-1 rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm outline-none placeholder:text-slate-500" />
+                <DarkButton onClick={addPlayer} className="px-3"><Plus className="h-4 w-4" /></DarkButton>
+              </div>
+            </div>
+            <nav className="mt-5 space-y-2">
+              {visibleTabs.map((tab) => {
+                const Icon = tab.icon;
+                const active = activeTab === tab.id;
+                return <button key={tab.id} onClick={() => { if (tab.id === "playerProfile") setSelectedProfilePlayerId(currentPlayerId); setActiveTab(tab.id); }} className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-bold transition ${active ? "bg-slate-800 text-slate-50 shadow-lg" : "bg-slate-900/70 text-slate-400 hover:bg-slate-800 hover:text-slate-100"}`}><Icon className="h-4 w-4" />{tab.label}</button>;
+              })}
+            </nav>
+            <div className="mt-5 rounded-2xl border border-slate-700 bg-slate-950 p-4">
+              <div className="flex items-center justify-between text-sm"><span className="text-slate-400">房间邀请码</span><span className="font-black tracking-widest">WC2026</span></div>
+              <div className="mt-3 text-xs leading-relaxed text-slate-500">朋友通过邀请码进入同一个房间，提交比分预测后自动参与竞猜排行榜。</div>
+            </div>
+          </Card>
+        </aside>
+        <main className="min-w-0 flex-1">
+          {activeTab === "home" && <HomePanel matches={matches} predictions={predictions} currentPlayerId={currentPlayerId} myStats={myStats} unPredictedCount={unPredictedCount} players={players} rankings={rankings} currentTime={currentTime} setSelectedMatchId={setSelectedMatchId} setActiveTab={setActiveTab} onOpenPlayerProfile={openPlayerProfile} />}
+          {activeTab === "completeSchedule" && <FullScheduleCalendar />}
+          {activeTab === "worldCupStandings" && <WorldCupStandingsPanel standings={worldCupStandings} settledCount={worldCupSettledCount} results={worldCupResults} onUpdateResult={updateWorldCupResult} onClearResult={clearWorldCupResult} />}
+          {activeTab === "schedule" && <SchedulePanel predictions={predictions} currentPlayerId={currentPlayerId} query={query} setQuery={setQuery} stageFilter={stageFilter} setStageFilter={setStageFilter} groupedMatches={groupedMatches} selectedMatch={selectedMatch} setSelectedMatchId={setSelectedMatchId} upsertPrediction={upsertPrediction} players={players} currentTime={currentTime} onOpenPlayerProfile={openPlayerProfile} />}
+          {activeTab === "playerProfile" && <PlayerProfilePanel player={profilePlayer} players={players} rankings={rankings} predictions={predictions} matches={matches} streakRankings={streakRankings} predictionStyleRankings={predictionStyleRankings} reverseLightPlayer={reverseLightPlayer} funPredictions={funPredictions} funResults={funResults} onBack={() => setActiveTab("ranking")} />}
+          {activeTab === "fun" && <FunPredictionPanel currentPlayer={currentPlayer} players={players} funPredictions={funPredictions} onSave={saveFunPrediction} locked={funPredictionLocked} firstKickoff={firstKickoff} funResults={funResults} />}
+          {activeTab === "achievements" && <AchievementsPanel players={players} currentPlayerId={currentPlayerId} predictions={predictions} matches={matches} />}
+          {activeTab === "ranking" && <RankingPanel players={players} rankingTrend={rankingTrend} predictionStyleRankings={predictionStyleRankings} streakRankings={streakRankings} reverseLightPlayer={reverseLightPlayer} dailyBestPlayers={dailyBestPlayers} rankings={rankings} currentPlayerId={currentPlayerId} settledCount={settledCount} onOpenPlayerProfile={openPlayerProfile} />}
+          {isAdmin && activeTab === "admin" && <AdminPanel matches={matches} players={players} predictions={predictions} updateMatchResult={updateMatchResult} toggleLock={toggleLock} funResults={funResults} onSetFunResults={setFunResults} />}
+          {activeTab === "rules" && <RulesPanel />}
+        </main>
+      </div>
+    </div>
+  );
+}
+
+function HomePanel({ matches, predictions, currentPlayerId, myStats, unPredictedCount, rankings, currentTime, setSelectedMatchId, setActiveTab, onOpenPlayerProfile }) {
+  const sortedMatches = [...matches].sort((a, b) => new Date(a.kickoff).getTime() - new Date(b.kickoff).getTime());
+  const todayMatches = sortedMatches.filter((match) => isSameBeijingDate(match.kickoff, currentTime));
+  const soonLockMatches = sortedMatches.filter((match) => !isMatchLocked(match, currentTime)).slice(0, 6);
+
+  function openMatch(matchId) {
+    setSelectedMatchId(matchId);
+    setActiveTab("schedule");
+  }
+
+  return (
+    <section className="mt-6 space-y-6">
+      <Card>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-black">竞猜排行榜前三</h2>
+            <p className="text-sm text-slate-400">点击玩家名字进入个人主页。</p>
+          </div>
+          <DarkButton onClick={() => setActiveTab("ranking")} className="px-3 py-2 text-sm font-bold">查看完整榜单</DarkButton>
+        </div>
+        <div className="grid gap-3 md:grid-cols-3">
+          {rankings.slice(0, 3).map((player, index) => (
+            <button key={player.id} onClick={() => onOpenPlayerProfile(player.id)} className="flex items-center justify-between rounded-2xl border border-slate-700 bg-slate-950 p-3 text-left transition hover:bg-slate-800/80">
+              <div className="flex items-center gap-3">
+                <AvatarBadge size="h-9 w-9" text="text-lg">{player.avatar}</AvatarBadge>
+                <div>
+                  <div className="font-black">#{index + 1} {player.name}</div>
+                  <div className="text-xs text-slate-500">命中比分 {player.exactCount} 场</div>
+                </div>
+              </div>
+              <div className="text-xl font-black">{player.total}</div>
+            </button>
+          ))}
+        </div>
+      </Card>
+
+      <div className="grid gap-4 md:grid-cols-4">
+        <StatCard icon={Crown} label="我的积分" value={`${myStats?.total || 0}分`} sub="已结算比赛累计" />
+        <StatCard icon={Medal} label="命中比分" value={`${myStats?.exactCount || 0}场`} sub="完全猜中比分" />
+        <StatCard icon={CalendarDays} label="未竞猜" value={`${unPredictedCount}场`} sub="记得开赛前提交" />
+        <StatCard icon={Users} label="当前排名" value={`#${rankings.findIndex((player) => player.id === currentPlayerId) + 1 || "-"}`} sub="点击玩家名可查看主页" />
+      </div>
+
+      <div className="grid gap-5 xl:grid-cols-2">
+        <HomeMatchSection title="今日比赛" subtitle="按北京时间统计今天的比赛" matches={todayMatches} predictions={predictions} currentPlayerId={currentPlayerId} currentTime={currentTime} emptyText="今天暂无比赛" onOpenMatch={openMatch} />
+        <HomeMatchSection title="即将锁定" subtitle="按开球时间排序，越靠前越需要尽快提交" matches={soonLockMatches} predictions={predictions} currentPlayerId={currentPlayerId} currentTime={currentTime} emptyText="暂无即将锁定的比赛" onOpenMatch={openMatch} />
+      </div>
+    </section>
+  );
+}
+
+function HomeMatchSection({ title, subtitle, matches, predictions, currentPlayerId, currentTime, emptyText, onOpenMatch }) {
+  return (
+    <Card>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-black">{title}</h2>
+          <p className="text-sm text-slate-400">{subtitle}</p>
+        </div>
+        <Pill className="bg-slate-800 text-slate-300">{matches.length} 场</Pill>
+      </div>
+      <div className="space-y-3">
+        {matches.length ? matches.map((match) => (
+          <MatchListButton key={match.id} match={match} pred={predictions.find((p) => p.playerId === currentPlayerId && p.matchId === match.id)} active={false} now={currentTime} onClick={() => onOpenMatch(match.id)} />
+        )) : <div className="rounded-2xl border border-slate-700 bg-slate-950 p-5 text-center text-sm text-slate-500">{emptyText}</div>}
+      </div>
+    </Card>
+  );
+}
+
+function MatchListButton({ match, pred, active, onClick, now = new Date() }) {
+  const stage = STAGES[match.stage] || STAGES.GROUP;
+  return (
+    <button onClick={onClick} className={`w-full rounded-2xl border p-4 text-left transition ${active ? "border-slate-500 bg-slate-800" : "border-slate-700 bg-slate-950/60 hover:bg-slate-800/80"}`}>
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <div className="mb-2 flex flex-wrap gap-2">
+            <Pill className="bg-slate-800 text-slate-300">#{match.no}</Pill>
+            <Pill className="bg-indigo-500/15 text-indigo-200">{stage.label} x{stage.multiplier}</Pill>
+            <MatchStatus match={match} />
+            <MatchCountdown match={match} now={now} />
+            {pred ? <Pill className="bg-emerald-500/15 text-emerald-200">已竞猜</Pill> : <Pill className="bg-rose-500/15 text-rose-200">未竞猜</Pill>}
+          </div>
+          <div className="text-lg font-black">{teamName(match.home)} <span className="mx-2 text-slate-500">vs</span> {teamName(match.away)}</div>
+          <div className="mt-1 text-xs text-slate-500">{formatDateTime(match.kickoff)} · {match.group}</div>
+        </div>
+        <div className="text-left md:text-right"><MatchScore match={match} />{pred && <div className="mt-2 text-xs text-slate-500">我的预测：{pred.home}:{pred.away}</div>}</div>
+      </div>
+    </button>
+  );
+}
+
+function SchedulePanel({ predictions, currentPlayerId, query, setQuery, stageFilter, setStageFilter, groupedMatches, selectedMatch, setSelectedMatchId, upsertPrediction, players, currentTime, onOpenPlayerProfile }) {
+  return (
+    <section className="mt-6 grid gap-5 lg:grid-cols-[1fr_420px]">
+      <Card>
+        <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div><h2 className="text-xl font-black">赛程与竞猜</h2><p className="text-sm text-slate-400">开赛前可以修改，开赛后自动锁定。</p></div>
+          <div className="flex gap-2"><div className="relative min-w-0"><Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="搜索球队/阶段" className="w-full rounded-xl border border-slate-700 bg-slate-950 py-2 pl-9 pr-3 text-sm outline-none placeholder:text-slate-500" /></div><select value={stageFilter} onChange={(e) => setStageFilter(e.target.value)} className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm outline-none"><option value="ALL">全部</option>{Object.entries(STAGES).map(([key, value]) => <option key={key} value={key}>{value.label}</option>)}</select></div>
+        </div>
+        <div className="space-y-6">
+          {Object.entries(groupedMatches).map(([date, items]) => <div key={date}><div className="mb-3 flex items-center gap-2 text-sm font-black text-slate-400"><CalendarDays className="h-4 w-4" /> {date}</div><div className="space-y-3">{items.map((match) => <MatchListButton key={match.id} match={match} pred={predictions.find((p) => p.playerId === currentPlayerId && p.matchId === match.id)} active={selectedMatch.id === match.id} now={currentTime} onClick={() => setSelectedMatchId(match.id)} />)}</div></div>)}
+        </div>
+      </Card>
+      <MatchDetail match={selectedMatch} players={players} predictions={predictions} currentPlayerId={currentPlayerId} onSubmit={upsertPrediction} now={currentTime} onOpenPlayerProfile={onOpenPlayerProfile} />
+    </section>
+  );
+}
+
+function WorldCupStandingsPanel({ standings, settledCount }) {
+  const groupKeys = Object.keys(standings).sort((a, b) => a.localeCompare(b, "zh-CN"));
+  const bestThirdTeams = groupKeys
+    .map((group) => ({ ...sortStandingsTable(standings[group])[2], group }))
+    .filter(Boolean)
+    .sort((a, b) =>
+      b.points - a.points ||
+      b.goalDifference - a.goalDifference ||
+      b.goalsFor - a.goalsFor ||
+      a.team.localeCompare(b.team, "zh-CN")
+    );
+
+  return (
+    <section className="mt-6 space-y-5">
+      <Card>
+        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
+          <div>
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-slate-800 px-3 py-1 text-xs font-semibold text-slate-300"><Medal className="h-3.5 w-3.5" /> 世界杯排名 · 小组积分</div>
+            <h2 className="text-3xl font-black tracking-tight">世界杯小组实时积分榜</h2>
+            <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-400">根据管理员已结算的小组赛比分自动更新。玩家可以观察每个小组的积分、净胜球、进球数，以及直接出线和小组第三竞争形势。</p>
+          </div>
+          <div className="rounded-2xl border border-slate-700 bg-slate-800 p-4 text-slate-100 shadow-xl"><div className="text-xs font-bold text-slate-400">已结算比赛</div><div className="mt-1 text-3xl font-black">{settledCount}</div></div>
+        </div>
+      </Card>
+
+      <Card>
+        <div className="mb-4 flex flex-col justify-between gap-3 md:flex-row md:items-end">
+          <div>
+            <h3 className="text-xl font-black">出线形势说明</h3>
+            <p className="text-sm text-slate-400">每组前二进入直接出线区；小组第三进入竞争区，最终会根据各组第三名成绩比较。</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Pill className="bg-emerald-500/15 text-emerald-200">前二直接出线</Pill>
+            <Pill className="bg-amber-500/15 text-amber-200">小组第三竞争</Pill>
+            <Pill className="bg-slate-800 text-slate-400">第四名待追赶</Pill>
+          </div>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+          {bestThirdTeams.slice(0, 8).map((team, index) => (
+            <div key={`${team.group}-${team.team}`} className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-3">
+              <div className="mb-1 text-xs font-black text-amber-200">小组第三竞争 #{index + 1}</div>
+              <div className="font-black">{teamName(team.team)}</div>
+              <div className="mt-1 text-xs text-slate-400">{team.group} · {team.points}分 · 净胜球 {team.goalDifference} · 进球 {team.goalsFor}</div>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      <div className="grid gap-5">
+        {groupKeys.map((group) => <GroupStandingsCard key={group} group={group} table={sortStandingsTable(standings[group])} />)}
+      </div>
+    </section>
+  );
+}
+
+function GroupStandingsCard({ group, table }) {
+  return (
+    <Card>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div>
+          <h3 className="text-xl font-black">{group}</h3>
+          <p className="text-sm text-slate-400">实时积分 / 净胜球 / 进球数</p>
+        </div>
+        <Pill className="bg-slate-800 text-slate-300">{table.reduce((sum, team) => sum + team.played, 0) / 2} 场已赛</Pill>
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-slate-700">
+        <table className="w-full min-w-[620px] text-left text-sm">
+          <thead className="bg-slate-800 text-slate-400">
+            <tr>
+              <th className="px-3 py-3">排名</th>
+              <th className="px-3 py-3">球队</th>
+              <th className="px-3 py-3 text-center">积分</th>
+              <th className="px-3 py-3 text-center">赛</th>
+              <th className="px-3 py-3 text-center">胜</th>
+              <th className="px-3 py-3 text-center">平</th>
+              <th className="px-3 py-3 text-center">负</th>
+              <th className="px-3 py-3 text-center">进/失</th>
+              <th className="px-3 py-3 text-center">净胜</th>
+              <th className="px-3 py-3">形势</th>
+            </tr>
+          </thead>
+          <tbody>
+            {table.map((team, index) => {
+              const status = getQualificationLabel(index);
+              return (
+                <tr key={team.team} className="border-t border-slate-700 bg-slate-950/60">
+                  <td className="px-3 py-3 font-black">#{index + 1}</td>
+                  <td className="px-3 py-3 font-black">{teamName(team.team)}</td>
+                  <td className="px-3 py-3 text-center text-lg font-black text-emerald-200">{team.points}</td>
+                  <td className="px-3 py-3 text-center">{team.played}</td>
+                  <td className="px-3 py-3 text-center">{team.won}</td>
+                  <td className="px-3 py-3 text-center">{team.drawn}</td>
+                  <td className="px-3 py-3 text-center">{team.lost}</td>
+                  <td className="px-3 py-3 text-center">{team.goalsFor}/{team.goalsAgainst}</td>
+                  <td className="px-3 py-3 text-center">{team.goalDifference}</td>
+                  <td className="px-3 py-3"><Pill className={status.className}>{status.label}</Pill></td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </Card>
+  );
+}
+
+function FullScheduleCalendar() {
+  const [scheduleQuery, setScheduleQuery] = useState("");
+  const [scheduleStage, setScheduleStage] = useState("ALL");
+  const filteredSchedule = useMemo(() => COMPLETE_WORLD_CUP_SCHEDULE.filter((match) => {
+    const text = `${match.no}${match.home}${match.away}${match.group}${match.stadium}${match.city}`.toLowerCase();
+    return text.includes(scheduleQuery.toLowerCase()) && (scheduleStage === "ALL" || match.group === scheduleStage);
+  }), [scheduleQuery, scheduleStage]);
+  const scheduleByDate = useMemo(() => filteredSchedule.reduce((acc, match) => {
+    const key = formatBeijingDateKey(match.kickoff);
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(match);
+    acc[key].sort((a, b) => new Date(a.kickoff).getTime() - new Date(b.kickoff).getTime());
+    return acc;
+  }, {}), [filteredSchedule]);
+  const stageOptions = ["ALL", ...Array.from(new Set(COMPLETE_WORLD_CUP_SCHEDULE.map((match) => match.group)))];
+  return (
+    <section className="mt-6 space-y-5">
+      <Card>
+        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
+          <div>
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-slate-800 px-3 py-1 text-xs font-semibold text-slate-300"><CalendarDays className="h-3.5 w-3.5" /> 完整赛程 · 北京时间</div>
+            <h2 className="text-3xl font-black tracking-tight">完整赛程列表</h2>
+            <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-400">已录入 2026 世界杯 104 场比赛。每场比赛包含对阵球队、北京时间开球时间、小组/阶段信息、比赛球馆和城市地点。</p>
+          </div>
+          <div className="rounded-2xl border border-slate-700 bg-slate-800 p-4 text-slate-100 shadow-xl"><div className="text-xs font-bold text-slate-400">比赛总数</div><div className="mt-1 text-3xl font-black">{COMPLETE_WORLD_CUP_SCHEDULE.length}</div></div>
+        </div>
+      </Card>
+      <Card>
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div><h3 className="text-xl font-black">快速浏览</h3><p className="text-sm text-slate-400">适合手机端按日期查看，所有球队、球馆和城市均为中文显示。</p></div>
+          <div className="flex flex-col gap-2 sm:flex-row"><div className="relative min-w-0"><Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" /><input value={scheduleQuery} onChange={(e) => setScheduleQuery(e.target.value)} placeholder="搜索球队 / 球馆 / 城市" className="w-full rounded-xl border border-slate-700 bg-slate-950 py-2 pl-9 pr-3 text-sm outline-none placeholder:text-slate-500 sm:w-64" /></div><select value={scheduleStage} onChange={(e) => setScheduleStage(e.target.value)} className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm outline-none">{stageOptions.map((stage) => <option key={stage} value={stage}>{stage === "ALL" ? "全部小组/阶段" : stage}</option>)}</select></div>
+        </div>
+      </Card>
+      <Card>
+        <div className="mb-4 flex items-center justify-between gap-3"><div><h3 className="text-xl font-black">按日期列表</h3><p className="text-sm text-slate-400">每个比赛日集中显示，方便赛前快速查看当天赛程。</p></div><Pill className="bg-slate-800 text-slate-300">{filteredSchedule.length} 场</Pill></div>
+        <div className="space-y-4">
+          {Object.entries(scheduleByDate).sort(([a], [b]) => a.localeCompare(b)).map(([dateKey, items]) => <div key={dateKey} className="rounded-2xl border border-slate-700 bg-slate-950/70 p-4"><div className="mb-3 flex items-center gap-2 text-sm font-black text-slate-300"><CalendarDays className="h-4 w-4" /> {formatBeijingDateTitle(items[0].kickoff)}</div><div className="grid gap-3 md:grid-cols-2">{items.map((match) => <ScheduleLargeCard key={match.no} match={match} />)}</div></div>)}
+        </div>
+      </Card>
+    </section>
+  );
+}
+
+function ScheduleLargeCard({ match }) {
+  return <div className="rounded-2xl border border-slate-700 bg-slate-950 p-3"><div className="mb-2 flex flex-wrap items-center gap-2"><Pill className="bg-slate-800 text-slate-300">#{match.no}</Pill><Pill className="bg-indigo-500/15 text-indigo-200">{match.group}</Pill><Pill className="bg-slate-800 text-slate-100">{formatBeijingTime(match.kickoff)} 北京时间</Pill></div><div className="text-lg font-black">{teamName(match.home)} <span className="mx-1 text-slate-500">vs</span> {teamName(match.away)}</div><div className="mt-2 text-sm text-slate-400">{match.stadium}</div><div className="text-xs text-slate-500">{match.city}</div></div>;
+}
+
+function MatchDetail({ match, players, predictions, currentPlayerId, onSubmit, now = new Date(), onOpenPlayerProfile }) {
+  const existing = predictions.find((p) => p.playerId === currentPlayerId && p.matchId === match.id);
+  const [home, setHome] = useState(existing?.home ?? 0);
+  const [away, setAway] = useState(existing?.away ?? 0);
+  React.useEffect(() => { const next = predictions.find((p) => p.playerId === currentPlayerId && p.matchId === match.id); setHome(next?.home ?? 0); setAway(next?.away ?? 0); }, [match.id, currentPlayerId, predictions]);
+  const locked = isMatchLocked(match, now);
+  const showAllPredictions = locked || match.status !== "open";
+  const stage = STAGES[match.stage] || STAGES.GROUP;
+  return (
+    <Card className="lg:sticky lg:top-6 lg:self-start">
+      <div className="mb-4 flex items-start justify-between gap-3"><div><div className="mb-2 flex flex-wrap gap-2"><Pill className="bg-indigo-500/15 text-indigo-200">{stage.label} x{stage.multiplier}</Pill><MatchStatus match={match} /><MatchCountdown match={match} now={now} /></div><h2 className="text-2xl font-black leading-tight">{teamName(match.home)} vs {teamName(match.away)}</h2><p className="mt-1 text-sm text-slate-500">{formatDateTime(match.kickoff)} · {match.group}</p></div><div className="rounded-2xl bg-slate-800 p-3">{locked ? <Lock className="h-5 w-5" /> : <Unlock className="h-5 w-5" />}</div></div>
+      <div className="rounded-2xl bg-slate-950 p-4"><div className="text-sm font-bold text-slate-300">我的比分预测</div><div className="mt-4 grid grid-cols-[1fr_auto_1fr] items-center gap-3"><ScoreInput label={teamName(match.home)} value={home} disabled={locked} onChange={setHome} /><div className="pt-7 text-xl font-black text-slate-500">:</div><ScoreInput label={teamName(match.away)} value={away} disabled={locked} onChange={setAway} /></div><DarkButton disabled={locked} onClick={() => onSubmit(match.id, Number(home), Number(away))} className="mt-4 flex w-full items-center justify-center gap-2 px-4 py-3 font-black">{existing ? <CheckCircle2 className="h-5 w-5" /> : <Plus className="h-5 w-5" />}{existing ? "修改预测" : "提交预测"}</DarkButton>{locked && <div className="mt-3 text-center text-xs text-slate-500">比赛已锁定，不能再修改预测。</div>}</div>
+      <div className="mt-5"><div className="mb-3 flex items-center justify-between"><h3 className="font-black">朋友预测</h3>{!showAllPredictions && <Pill className="bg-slate-800 text-slate-400">开赛后公开</Pill>}</div><div className="space-y-2">{players.map((player) => { const pred = predictions.find((p) => p.playerId === player.id && p.matchId === match.id); const isMe = player.id === currentPlayerId; const canShow = showAllPredictions || isMe; const points = calculatePoints(pred, match); return <div key={player.id} className="rounded-2xl bg-slate-800/60 p-3"><div className="flex items-center justify-between gap-3"><button onClick={() => onOpenPlayerProfile?.(player.id)} className="flex items-center gap-3 text-left"><AvatarBadge size="h-9 w-9" text="text-lg">{player.avatar}</AvatarBadge><div><div className="font-bold hover:text-cyan-200">{player.name} {isMe && <span className="text-xs text-emerald-200">我</span>}</div><div className="text-xs text-slate-500">{pred ? "已提交" : "未提交"}</div></div></button><div className="text-right">{canShow ? <><div className="text-lg font-black">{pred ? `${pred.home}:${pred.away}` : "--"}</div>{match.status === "settled" && <div className="text-xs text-slate-500">{explainPoints(pred, match)} · +{points}</div>}</> : <div className="text-sm text-slate-500">已隐藏</div>}</div></div></div>; })}</div></div>
+    </Card>
+  );
+}
+
+function ScoreInput({ label, value, disabled, onChange }) {
+  return <div><div className="mb-2 truncate text-center text-sm text-slate-400">{label}</div><input type="number" min="0" value={value} disabled={disabled} onChange={(e) => onChange(Math.max(0, Number(e.target.value)))} className="w-full rounded-2xl border border-slate-700 bg-slate-900 px-4 py-4 text-center text-3xl font-black outline-none disabled:opacity-50" /></div>;
+}
+
+function FunPredictionPanel({ currentPlayer, players, funPredictions, onSave, locked, firstKickoff, funResults }) {
+  const existing = funPredictions[currentPlayer?.id] || {};
+  const [champion, setChampion] = useState(existing.champion || "");
+  const [goldenBoot, setGoldenBoot] = useState(existing.goldenBoot || "");
+  const [firstRedCardTeam, setFirstRedCardTeam] = useState(existing.firstRedCardTeam || "");
+  const [totalGoals, setTotalGoals] = useState(existing.totalGoals ?? "");
+  React.useEffect(() => { const next = funPredictions[currentPlayer?.id] || {}; setChampion(next.champion || ""); setGoldenBoot(next.goldenBoot || ""); setFirstRedCardTeam(next.firstRedCardTeam || ""); setTotalGoals(next.totalGoals ?? ""); }, [currentPlayer?.id, funPredictions]);
+  const canSubmitFunPrediction = !locked && champion.trim() && goldenBoot.trim() && firstRedCardTeam.trim() && String(totalGoals).trim() && Number.isFinite(Number(totalGoals));
+  const titleAwards = useMemo(() => {
+    const resultTotalGoals = Number(funResults.totalGoals);
+    const validGoalPredictions = players.map((player) => ({ ...player, prediction: funPredictions[player.id] })).filter((player) => player.prediction && Number.isFinite(Number(player.prediction.totalGoals)) && Number.isFinite(resultTotalGoals));
+    const closestGoalDiff = validGoalPredictions.length ? Math.min(...validGoalPredictions.map((player) => Math.abs(Number(player.prediction.totalGoals) - resultTotalGoals))) : null;
+    return players.map((player) => {
+      const prediction = funPredictions[player.id];
+      const titles = [];
+      if (prediction && funResults.champion && prediction.champion.trim() === funResults.champion.trim()) titles.push("世界杯导演");
+      if (prediction && funResults.goldenBoot && prediction.goldenBoot.trim() === funResults.goldenBoot.trim()) titles.push("金靴伯乐");
+      if (prediction && funResults.firstRedCardTeam && prediction.firstRedCardTeam.trim() === funResults.firstRedCardTeam.trim()) titles.push("我闻到了火药味");
+      if (prediction && closestGoalDiff !== null && Number.isFinite(resultTotalGoals) && Math.abs(Number(prediction.totalGoals) - resultTotalGoals) === closestGoalDiff) titles.push("进球神算子");
+      return { ...player, titles };
+    });
+  }, [players, funPredictions, funResults]);
+  return (
+    <section className="mt-6 space-y-5"><Card><div className="flex flex-col justify-between gap-4 md:flex-row md:items-end"><div><div className="mb-3 inline-flex items-center gap-2 rounded-full bg-slate-800 px-3 py-1 text-xs font-semibold text-slate-300"><Flame className="h-3.5 w-3.5" /> 荣誉玩法 · 不额外加分</div><h2 className="text-3xl font-black tracking-tight">趣味预测栏</h2><p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-400">冠军、金靴、首张红牌球队和本届总进球数预测，必须在第一场世界杯比赛开始前提交并锁定。赢家没有额外积分奖励，只获得趣味称号。</p></div><div className="rounded-2xl border border-slate-700 bg-slate-800 p-4 text-slate-100 shadow-xl"><div className="text-xs font-bold text-slate-400">锁定时间</div><div className="mt-1 text-lg font-black">{formatDateTime(firstKickoff)}</div></div></div></Card><div className="grid gap-5 lg:grid-cols-[420px_1fr]"><Card><div className="mb-4 flex items-center justify-between gap-3"><div><h3 className="text-xl font-black">我的趣味预测</h3><p className="text-sm text-slate-400">第一场开赛前可修改。</p></div>{locked ? <Pill className="bg-amber-500/15 text-amber-200">已锁定</Pill> : <Pill className="bg-sky-500/15 text-sky-200">可提交</Pill>}</div><div className="space-y-4"><FunInput label="冠军预测 · 称号：世界杯导演" value={champion} disabled={locked} onChange={setChampion} placeholder="例如：巴西 / 阿根廷 / 法国" /><FunInput label="金靴预测 · 称号：金靴伯乐" value={goldenBoot} disabled={locked} onChange={setGoldenBoot} placeholder="例如：姆巴佩 / 哈兰德 / 梅西" /><FunInput label="首张红牌球队 · 称号：我闻到了火药味" value={firstRedCardTeam} disabled={locked} onChange={setFirstRedCardTeam} placeholder="例如：乌拉圭 / 阿根廷 / 塞尔维亚" /><div><label className="mb-2 block text-sm font-bold text-slate-300">本届总进球数预测 · 称号：进球神算子</label><input type="number" min="0" value={totalGoals} disabled={locked} onChange={(e) => setTotalGoals(e.target.value)} placeholder="例如：180" className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm outline-none placeholder:text-slate-500 disabled:opacity-50" /><div className="mt-2 grid gap-2 text-xs text-slate-500 sm:grid-cols-2">{WORLD_CUP_GOAL_REFERENCES.map((item) => <div key={item.edition} className="rounded-xl bg-slate-950 px-3 py-2">{item.edition}：<span className="font-black text-slate-200">{item.goals} 球</span></div>)}</div></div><DarkButton disabled={!canSubmitFunPrediction} onClick={() => onSave(champion, goldenBoot, firstRedCardTeam, totalGoals)} className="flex w-full items-center justify-center gap-2 px-4 py-3 font-black"><CheckCircle2 className="h-5 w-5" />{existing.submittedAt ? "更新趣味预测" : "提交趣味预测"}</DarkButton><div className="rounded-2xl bg-slate-950 p-3 text-xs leading-relaxed text-slate-500">当前规则：趣味预测不改变排行榜积分；第一场比赛开始后统一锁定并公开所有人的选择。</div></div></Card><Card><div className="mb-4 flex items-center justify-between gap-3"><div><h3 className="text-xl font-black">朋友趣味预测</h3><p className="text-sm text-slate-400">锁定前隐藏他人选择，避免互相抄答案。</p></div><Pill className="bg-slate-800 text-slate-300">{Object.keys(funPredictions).length}/{players.length} 已提交</Pill></div><div className="grid gap-3 md:grid-cols-2">{players.map((player) => <FunPredictionPlayerCard key={player.id} player={player} prediction={funPredictions[player.id]} isMe={player.id === currentPlayer?.id} canShow={locked || player.id === currentPlayer?.id} awards={titleAwards.find((item) => item.id === player.id)?.titles || []} />)}</div></Card></div></section>
+  );
+}
+
+function FunInput({ label, value, disabled, onChange, placeholder }) {
+  return <div><label className="mb-2 block text-sm font-bold text-slate-300">{label}</label><input value={value} disabled={disabled} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm outline-none placeholder:text-slate-500 disabled:opacity-50" /></div>;
+}
+
+function FunPredictionPlayerCard({ player, prediction, isMe, canShow, awards }) {
+  return <div className="rounded-2xl border border-slate-700 bg-slate-950 p-4"><div className="mb-3 flex items-center justify-between gap-3"><div className="flex items-center gap-3"><AvatarBadge>{player.avatar}</AvatarBadge><div><div className="font-black">{player.name} {isMe && <span className="text-xs text-emerald-200">我</span>}</div><div className="text-xs text-slate-500">{prediction ? "已提交" : "未提交"}</div></div></div>{prediction ? <CheckCircle2 className="h-5 w-5 text-emerald-200" /> : <XCircle className="h-5 w-5 text-slate-600" />}</div>{canShow ? <div className="space-y-2 text-sm"><InfoRow label="冠军" value={prediction ? teamName(prediction.champion) : "--"} /><InfoRow label="金靴" value={prediction?.goldenBoot || "--"} /><InfoRow label="首张红牌" value={prediction ? teamName(prediction.firstRedCardTeam) : "--"} /><InfoRow label="总进球数" value={prediction?.totalGoals ?? "--"} />{awards.length > 0 && <div className="flex flex-wrap gap-2 pt-1">{awards.map((award) => <Pill key={award} className="bg-yellow-500/15 text-yellow-200">{award}</Pill>)}</div>}</div> : <div className="rounded-xl bg-slate-900 px-3 py-5 text-center text-sm text-slate-500">第一场开赛后公开</div>}</div>;
+}
+
+function InfoRow({ label, value }) {
+  return <div className="flex items-center justify-between rounded-xl bg-slate-900 px-3 py-2"><span className="text-slate-500">{label}</span><span className="font-black">{value}</span></div>;
+}
+
+function FunResultsCard({ funResults, onSetFunResults }) {
+  const [draftResults, setDraftResults] = useState(funResults);
+
+  React.useEffect(() => {
+    setDraftResults(funResults);
+  }, [funResults]);
+
+  function settleFunResults() {
+    onSetFunResults({
+      champion: draftResults.champion.trim(),
+      goldenBoot: draftResults.goldenBoot.trim(),
+      firstRedCardTeam: draftResults.firstRedCardTeam.trim(),
+      totalGoals: String(draftResults.totalGoals).trim(),
+    });
+  }
+
+  return (
+    <Card>
+      <div className="mb-4 flex flex-col justify-between gap-3 md:flex-row md:items-end">
+        <div>
+          <h3 className="text-xl font-black">赛后趣味称号结算</h3>
+          <p className="text-sm text-slate-400">管理员填写最终结果后，点击结算按钮才会更新趣味预测页里的称号。</p>
+        </div>
+        <Pill className="bg-slate-800 text-slate-300">管理员结算</Pill>
+      </div>
+      <div className="grid gap-3 md:grid-cols-4">
+        {[["champion", "实际冠军"], ["goldenBoot", "实际金靴"], ["firstRedCardTeam", "首张红牌球队"], ["totalGoals", "实际总进球数"]].map(([key, placeholder]) => (
+          <input
+            key={key}
+            type={key === "totalGoals" ? "number" : "text"}
+            min="0"
+            value={draftResults[key]}
+            onChange={(e) => setDraftResults((prev) => ({ ...prev, [key]: e.target.value }))}
+            placeholder={placeholder}
+            className="rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm outline-none placeholder:text-slate-500"
+          />
+        ))}
+      </div>
+      <button onClick={settleFunResults} className="mt-4 w-full rounded-2xl bg-emerald-700 px-4 py-3 text-sm font-black text-emerald-50 transition hover:bg-emerald-600 md:w-auto">
+        结算称号
+      </button>
+    </Card>
+  );
+}
+
+function PlayerProfilePanel({ player, players, rankings, predictions, matches, streakRankings, predictionStyleRankings, reverseLightPlayer, funPredictions, funResults, onBack }) {
+  const rankingIndex = rankings.findIndex((item) => item.id === player.id) + 1;
+  const ranking = rankings.find((item) => item.id === player.id) || player;
+  const playerPredictions = predictions.filter((prediction) => prediction.playerId === player.id);
+  const maxStreak = streakRankings.find((item) => item.id === player.id)?.maxStreak || 0;
+  const drawPredictions = playerPredictions.filter((prediction) => prediction.home === prediction.away).length;
+  const attackPredictions = playerPredictions.filter((prediction) => prediction.home + prediction.away >= 4).length;
+  const commonScore = getMostCommonPrediction(playerPredictions);
+  const favoriteStyle = drawPredictions === 0 && attackPredictions === 0 ? "暂无明显风格" : drawPredictions >= attackPredictions ? `更喜欢预测平局（${drawPredictions}次）` : `更喜欢大比分（${attackPredictions}次）`;
+  const titles = getPlayerTitles(player, funPredictions, funResults, predictionStyleRankings, streakRankings, reverseLightPlayer);
+  const playerAchievementStats = achievements.map((achievement) => {
+    const roomProgress = getAchievementRoomProgress(achievement, players, predictions, matches);
+    const currentPlayerProgress = roomProgress.find((item) => item.player.id === player.id)?.progress || getAchievementProgress(achievement, player, predictions, matches);
+    return { achievement, roomProgress, currentPlayerProgress };
+  });
+  const playerUnlockedAchievements = playerAchievementStats.filter((item) => item.currentPlayerProgress.achieved);
+  const playerUpcomingAchievements = playerAchievementStats
+    .filter((item) => !item.currentPlayerProgress.achieved)
+    .sort((a, b) => (b.currentPlayerProgress.current / b.currentPlayerProgress.target) - (a.currentPlayerProgress.current / a.currentPlayerProgress.target));
+  const history = playerPredictions.map((prediction) => {
+    const match = matches.find((item) => item.id === prediction.matchId);
+    return { prediction, match, points: calculatePoints(prediction, match) };
+  }).filter((item) => item.match).sort((a, b) => new Date(b.match.kickoff).getTime() - new Date(a.match.kickoff).getTime());
+
+  return (
+    <section className="mt-6 space-y-5">
+      <Card>
+        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
+          <div className="flex items-center gap-4">
+            <AvatarBadge size="h-16 w-16" text="text-3xl">{player.avatar}</AvatarBadge>
+            <div>
+              <h2 className="text-3xl font-black">{player.name} 的个人主页</h2>
+              <p className="mt-1 text-sm text-slate-400">查看个人竞猜表现、称号和历史记录。</p>
+            </div>
+          </div>
+          <DarkButton onClick={onBack} className="px-4 py-3 text-sm font-black">返回竞猜排行榜</DarkButton>
+        </div>
+      </Card>
+
+      <div className="grid gap-4 md:grid-cols-4">
+        <StatCard icon={Crown} label="总积分" value={`${ranking.total || 0}分`} sub={`当前排名 #${rankingIndex || "-"}`} />
+        <StatCard icon={Medal} label="完全比分" value={`${ranking.exactCount || 0}次`} sub="完全猜中比分" />
+        <StatCard icon={CheckCircle2} label="命中胜平负" value={`${ranking.outcomeCount || 0}次`} sub="包含完全比分" />
+        <StatCard icon={Flame} label="最高连胜" value={`${maxStreak}场`} sub="连续命中胜平负" />
+      </div>
+
+      <div className="grid gap-5 lg:grid-cols-3">
+        <Card>
+          <h3 className="mb-4 text-xl font-black">预测风格</h3>
+          <div className="space-y-3 text-sm">
+            <InfoRow label="最常预测比分" value={commonScore} />
+            <InfoRow label="预测平局次数" value={`${drawPredictions}次`} />
+            <InfoRow label="大比分预测次数" value={`${attackPredictions}次`} />
+            <InfoRow label="偏好判断" value={favoriteStyle} />
+          </div>
+        </Card>
+        <Card className="lg:col-span-2">
+          <h3 className="mb-4 text-xl font-black">目前获得的称号</h3>
+          {titles.length ? <div className="flex flex-wrap gap-2">{titles.map((title) => <Pill key={title} className="bg-yellow-500/15 text-yellow-200">{title}</Pill>)}</div> : <div className="rounded-2xl bg-slate-950 p-5 text-center text-sm text-slate-500">暂未获得称号</div>}
+        </Card>
+      </div>
+
+      <Card>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <h3 className="text-xl font-black">成就信息</h3>
+            <p className="text-sm text-slate-400">查看该玩家已获得和即将达成的成就。</p>
+          </div>
+          <Pill className="bg-slate-800 text-slate-300">{playerUnlockedAchievements.length}/{achievements.length}</Pill>
+        </div>
+        <div className="space-y-4">
+          <CompactAchievementSection title="已获得成就" items={playerUnlockedAchievements} emptyText="该玩家暂未获得成就" />
+          <CompactAchievementSection title="即将达成" items={playerUpcomingAchievements} emptyText="暂无即将达成的成就" />
+        </div>
+      </Card>
+
+      <Card>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <h3 className="text-xl font-black">历史竞猜记录</h3>
+            <p className="text-sm text-slate-400">按比赛时间倒序显示。</p>
+          </div>
+          <Pill className="bg-slate-800 text-slate-300">{history.length} 条</Pill>
+        </div>
+        <div className="space-y-3">
+          {history.length ? history.map(({ prediction, match, points }) => (
+            <div key={prediction.id} className="rounded-2xl border border-slate-700 bg-slate-950 p-4">
+              <div className="mb-2 flex flex-wrap items-center gap-2">
+                <Pill className="bg-slate-800 text-slate-300">#{match.no}</Pill>
+                <Pill className="bg-indigo-500/15 text-indigo-200">{(STAGES[match.stage] || STAGES.GROUP).label}</Pill>
+                {match.status === "settled" && <Pill className="bg-emerald-500/15 text-emerald-200">+{points}分</Pill>}
+              </div>
+              <div className="font-black">{teamName(match.home)} <span className="text-slate-500">vs</span> {teamName(match.away)}</div>
+              <div className="mt-1 text-sm text-slate-400">预测：{prediction.home}:{prediction.away} {match.status === "settled" ? `｜赛果：${match.homeScore}:${match.awayScore}｜${explainPoints(prediction, match)}` : "｜待结算"}</div>
+              <div className="mt-1 text-xs text-slate-500">提交时间：{formatDateTime(prediction.submittedAt)}｜开球：{formatDateTime(match.kickoff)}</div>
+            </div>
+          )) : <div className="rounded-2xl bg-slate-950 p-5 text-center text-sm text-slate-500">暂无竞猜记录</div>}
+        </div>
+      </Card>
+    </section>
+  );
+}
+
+function AchievementsPanel({ players, currentPlayerId, predictions, matches }) {
+  const currentPlayer = players.find((player) => player.id === currentPlayerId) || players[0];
+  const achievementStats = achievements.map((achievement) => {
+    const roomProgress = getAchievementRoomProgress(achievement, players, predictions, matches);
+    const currentPlayerProgress = roomProgress.find((item) => item.player.id === currentPlayer?.id)?.progress || getAchievementProgress(achievement, currentPlayer, predictions, matches);
+    return { achievement, roomProgress, currentPlayerProgress };
+  });
+  const unlocked = achievementStats.filter((item) => item.currentPlayerProgress.achieved);
+  const upcoming = achievementStats
+    .filter((item) => !item.currentPlayerProgress.achieved)
+    .sort((a, b) => (b.currentPlayerProgress.current / b.currentPlayerProgress.target) - (a.currentPlayerProgress.current / a.currentPlayerProgress.target));
+
+  return (
+    <section className="mt-6 space-y-5">
+      <Card>
+        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
+          <div>
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-slate-800 px-3 py-1 text-xs font-semibold text-slate-300"><Crown className="h-3.5 w-3.5" /> 成就墙 · 我的成就</div>
+            <h2 className="text-3xl font-black tracking-tight">成就墙</h2>
+            <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-400">这里只显示当前玩家自己的成就状态。想查看其他玩家的成就，可以进入对方个人主页。</p>
+          </div>
+          <div className="rounded-2xl border border-slate-700 bg-slate-800 p-4 text-slate-100 shadow-xl"><div className="text-xs font-bold text-slate-400">我的成就</div><div className="mt-1 text-3xl font-black">{unlocked.length}/{achievements.length}</div></div>
+        </div>
+      </Card>
+
+      <AchievementSection title="已获得成就" subtitle={`${currentPlayer?.name || "当前玩家"} 已经点亮的成就`} items={unlocked} emptyText="当前玩家暂未获得成就" />
+      <AchievementSection title="即将达成" subtitle="还未获得的成就会以暗色显示" items={upcoming} emptyText="暂无即将达成的成就" />
+    </section>
+  );
+}
+
+function AchievementSection({ title, subtitle, items, emptyText }) {
+  return (
+    <Card>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div>
+          <h3 className="text-xl font-black">{title}</h3>
+          <p className="text-sm text-slate-400">{subtitle}</p>
+        </div>
+        <Pill className="bg-slate-800 text-slate-300">{items.length} 个</Pill>
+      </div>
+      {items.length ? <div className="grid gap-4 xl:grid-cols-2">{items.map((item) => <AchievementCard key={`${title}-${item.achievement.id}`} {...item} />)}</div> : <div className="rounded-2xl border border-slate-700 bg-slate-950 p-5 text-center text-sm text-slate-500">{emptyText}</div>}
+    </Card>
+  );
+}
+
+function CompactAchievementSection({ title, items, emptyText }) {
+  return (
+    <div>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h4 className="font-black">{title}</h4>
+        <Pill className="bg-slate-800 text-slate-300">{items.length} 个</Pill>
+      </div>
+      {items.length ? <div className="grid gap-3 md:grid-cols-2">{items.map((item) => <AchievementCard key={`${title}-${item.achievement.id}`} {...item} compact />)}</div> : <div className="rounded-2xl border border-slate-700 bg-slate-950 p-4 text-center text-sm text-slate-500">{emptyText}</div>}
+    </div>
+  );
+}
+
+function AchievementCard({ achievement, roomProgress, currentPlayerProgress, compact = false }) {
+  const achievedCount = roomProgress.filter((item) => item.progress.achieved).length;
+  const achieved = currentPlayerProgress.achieved;
+  return (
+    <div className={`rounded-2xl border p-4 transition ${achieved ? "border-emerald-500/30 bg-slate-950 shadow-lg shadow-emerald-950/20" : "border-slate-800 bg-slate-950/45 opacity-60"}`}>
+      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+        <div>
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <Pill className={rarityStyles[achievement.rarity] || "bg-slate-800 text-slate-300"}>{achievement.rarity}</Pill>
+            <Pill className="bg-slate-800 text-slate-300">房间内 {achievedCount}/{roomProgress.length} 人获得</Pill>
+            {achieved ? <Pill className="bg-emerald-500/15 text-emerald-200">已获得</Pill> : <Pill className="bg-slate-800 text-slate-400">未获得</Pill>}
+          </div>
+          <h4 className={`${compact ? "text-base" : "text-lg"} font-black`}>{achievement.name}</h4>
+          <p className="mt-1 text-sm text-slate-400">{achievement.description}</p>
+        </div>
+      </div>
+      <div className="mt-4 rounded-2xl bg-slate-900 px-3 py-2 text-sm">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-slate-500">自己的获得时间</span>
+          <span className={achieved ? "font-black text-emerald-200" : "font-black text-slate-500"}>{formatAchievementTime(currentPlayerProgress.achievedAt)}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RankingPanel({ players, rankingTrend, predictionStyleRankings, streakRankings, reverseLightPlayer, dailyBestPlayers, rankings, currentPlayerId, settledCount, onOpenPlayerProfile }) {
+  return <section className="mt-6 space-y-5"><RankTrendChart players={players} rankingTrend={rankingTrend} /><PredictionStyleRankingsPanel predictionStyleRankings={predictionStyleRankings} /><FunRankingsPanel streakRankings={streakRankings} reverseLightPlayer={reverseLightPlayer} dailyBestPlayers={dailyBestPlayers} /><ScoreRankingTable rankings={rankings} currentPlayerId={currentPlayerId} settledCount={settledCount} onOpenPlayerProfile={onOpenPlayerProfile} /></section>;
+}
+
+function ScoreRankingTable({ rankings, currentPlayerId, settledCount, onOpenPlayerProfile }) {
+  return <Card><div className="mb-5 flex flex-col justify-between gap-3 md:flex-row md:items-end"><div><h2 className="text-2xl font-black">竞猜积分排行榜</h2><p className="text-sm text-slate-400">排序：总积分 ＞ 命中比分 ＞ 命中结果 ＞ 参与场次 ＞ 加入时间。点击玩家可查看个人主页。</p></div><Pill className="bg-slate-800 text-slate-100">已结算 {settledCount} 场</Pill></div><div className="overflow-hidden rounded-2xl border border-slate-700"><table className="w-full min-w-[720px] text-left text-sm"><thead className="bg-slate-800 text-slate-400"><tr><th className="px-4 py-3">排名</th><th className="px-4 py-3">玩家</th><th className="px-4 py-3">总积分</th><th className="px-4 py-3">完全比分</th><th className="px-4 py-3">命中结果</th><th className="px-4 py-3">参与场次</th></tr></thead><tbody>{rankings.map((player, index) => <tr key={player.id} className="border-t border-slate-700 bg-slate-950/60"><td className="px-4 py-4 text-lg font-black">#{index + 1}</td><td className="px-4 py-4"><button onClick={() => onOpenPlayerProfile?.(player.id)} className="flex items-center gap-3 text-left"><AvatarBadge>{player.avatar}</AvatarBadge><div><div className="font-black hover:text-cyan-200">{player.name}</div>{player.id === currentPlayerId && <div className="text-xs text-emerald-200">当前玩家</div>}</div></button></td><td className="px-4 py-4 text-2xl font-black">{player.total}</td><td className="px-4 py-4">{player.exactCount}</td><td className="px-4 py-4">{player.outcomeCount}</td><td className="px-4 py-4">{player.played}</td></tr>)}</tbody></table></div></Card>;
+}
+
+function MiniRankingCard({ title, subtitle, badge, players, valueLabel }) {
+  const leader = players?.[0];
+  return <Card><div className="mb-4 flex items-start justify-between gap-3"><div><h3 className="text-xl font-black">{title}</h3><p className="text-sm text-slate-400">{subtitle}</p></div><Pill className="bg-slate-800 text-slate-300">{badge}</Pill></div>{leader && leader.value > 0 ? <div className="space-y-3"><div className="rounded-3xl border border-slate-700 bg-slate-950 p-4 text-center"><div className="mx-auto flex justify-center"><AvatarBadge size="h-14 w-14" text="text-2xl">{leader.avatar}</AvatarBadge></div><div className="mt-3 text-xl font-black">{leader.name}</div><div className="mt-1 text-xs text-slate-500">当前第 1 名</div><div className="mt-3 rounded-2xl bg-slate-900 px-3 py-2 text-sm text-slate-400">{valueLabel} <span className="font-black text-slate-100">{leader.value}</span> 次</div></div><div className="space-y-2">{players.slice(0, 4).map((player, index) => <div key={player.id} className="flex items-center justify-between rounded-2xl bg-slate-800/60 px-3 py-2 text-sm"><span className="font-bold">#{index + 1} {player.avatar} {player.name}</span><span className="font-black">{player.value}</span></div>)}</div></div> : <div className="rounded-2xl bg-slate-800/60 p-5 text-center text-slate-500">暂无有效数据</div>}</Card>;
+}
+
+function PredictionStyleRankingsPanel({ predictionStyleRankings }) {
+  return <div><div className="mb-3 flex items-center justify-between gap-3"><div><h2 className="text-2xl font-black">预测风格榜</h2><p className="text-sm text-slate-400">这些榜单不改变积分，只记录玩家的竞猜风格和名场面。</p></div><Pill className="bg-slate-800 text-slate-100">趣味统计</Pill></div><div className="grid gap-5 lg:grid-cols-4"><MiniRankingCard title="精准狙击榜" subtitle="完全猜中比分次数最多。" badge="精准狙击手" players={predictionStyleRankings.exactSnipers} valueLabel="完全比分" /><MiniRankingCard title="稳健大师榜" subtitle="猜中胜平负次数最多。" badge="稳健大师" players={predictionStyleRankings.steadyMasters} valueLabel="命中结果" /><MiniRankingCard title="保守大师榜" subtitle="预测打平比分次数最多。" badge="保守大师" players={predictionStyleRankings.conservativeMasters} valueLabel="预测平局" /><MiniRankingCard title="进攻狂魔榜" subtitle="预测单场总进球 ≥ 4 次数最多。" badge="进攻狂魔" players={predictionStyleRankings.attackingMadmen} valueLabel="大比分预测" /></div></div>;
+}
+
+function FunRankingsPanel({ streakRankings, reverseLightPlayer, dailyBestPlayers }) {
+  return <div className="grid gap-5 lg:grid-cols-3"><Card><div className="mb-4 flex items-center justify-between"><div><h3 className="text-xl font-black">最高连胜排名</h3><p className="text-sm text-slate-400">连续猜中胜平负即计入连胜。</p></div><Pill className="bg-yellow-500/15 text-yellow-200">大预言家</Pill></div><div className="space-y-3">{streakRankings.map((player, index) => <div key={player.id} className="flex items-center justify-between rounded-2xl bg-slate-800/60 p-3"><div className="flex items-center gap-3"><AvatarBadge size="h-9 w-9" text="text-lg">{player.avatar}</AvatarBadge><div><div className="font-black">#{index + 1} {player.name}</div>{index === 0 && <div className="text-xs text-yellow-200">称号：大预言家</div>}</div></div><div className="text-2xl font-black">{player.maxStreak}</div></div>)}</div></Card><Card><div className="mb-4 flex items-center justify-between"><div><h3 className="text-xl font-black">反向明灯榜</h3><p className="text-sm text-slate-400">当前总分最低的玩家。</p></div><Pill className="bg-rose-500/15 text-rose-200">毒奶之王</Pill></div>{reverseLightPlayer ? <div className="rounded-3xl border border-rose-300/20 bg-rose-500/10 p-5 text-center"><div className="mx-auto flex justify-center"><AvatarBadge size="h-16 w-16" text="text-3xl">{reverseLightPlayer.avatar}</AvatarBadge></div><div className="mt-3 text-2xl font-black">{reverseLightPlayer.name}</div><div className="mt-1 text-sm text-rose-100">称号：毒奶之王</div><div className="mt-4 rounded-2xl bg-slate-950 p-3 text-sm text-slate-400">当前总分 {reverseLightPlayer.total} 分 · 参与 {reverseLightPlayer.played} 场</div></div> : <div className="rounded-2xl bg-slate-800/60 p-5 text-center text-slate-500">暂无数据</div>}</Card><Card><div className="mb-4"><h3 className="text-xl font-black">每日最佳玩家</h3><p className="text-sm text-slate-400">记录每个比赛日得分最高的人。</p></div><div className="max-h-[420px] space-y-3 overflow-auto pr-1">{dailyBestPlayers.length ? dailyBestPlayers.map((day) => <div key={day.date} className="rounded-2xl bg-slate-800/60 p-3"><div className="mb-2 flex items-center justify-between gap-3"><div className="font-black">{day.date}</div><Pill className="bg-slate-900 text-slate-300">{day.matchCount}场</Pill></div>{day.winners.length ? <div className="space-y-2">{day.winners.map((player) => <div key={player.id} className="flex items-center justify-between rounded-xl bg-slate-950 px-3 py-2"><span>{player.avatar} {player.name}</span><span className="font-black">{day.topScore}分</span></div>)}</div> : <div className="rounded-xl bg-slate-950 px-3 py-2 text-sm text-slate-500">当日暂无得分</div>}</div>) : <div className="rounded-2xl bg-slate-800/60 p-5 text-center text-slate-500">结算比赛后自动记录每日最佳。</div>}</div></Card></div>;
+}
+
+function RankTrendChart({ players, rankingTrend }) {
+  if (!rankingTrend.length) return <Card><div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between"><div><h2 className="text-2xl font-black">排名变化趋势</h2><p className="mt-1 text-sm text-slate-400">还没有已结算比赛，结算后这里会自动生成积分折线图。</p></div><Pill className="bg-slate-800 text-slate-300">等待结算</Pill></div></Card>;
+  const lineColors = ["#fbbf24", "#60a5fa", "#34d399", "#fb7185", "#a78bfa", "#f97316", "#22d3ee", "#e879f9"];
+  return <Card><div className="mb-5 flex flex-col justify-between gap-3 md:flex-row md:items-end"><div><h2 className="text-2xl font-black">排名变化趋势</h2><p className="text-sm text-slate-400">每结算一场比赛后自动刷新。纵轴显示玩家累计积分。</p></div><Pill className="bg-slate-800 text-slate-100">实时更新</Pill></div><div className="h-80 rounded-2xl border border-slate-700 bg-slate-950 p-3"><ResponsiveContainer width="100%" height="100%"><LineChart data={rankingTrend} margin={{ top: 10, right: 20, left: 0, bottom: 10 }}><CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.2)" /><XAxis dataKey="label" stroke="rgba(203,213,225,0.7)" tick={{ fill: "rgba(203,213,225,0.7)", fontSize: 12 }} /><YAxis allowDecimals={false} domain={[0, "auto"]} stroke="rgba(203,213,225,0.7)" tick={{ fill: "rgba(203,213,225,0.7)", fontSize: 12 }} tickFormatter={(value) => `${value}分`} /><Tooltip contentStyle={{ background: "rgba(15,23,42,0.96)", border: "1px solid rgba(148,163,184,0.35)", borderRadius: 16, color: "white" }} labelStyle={{ color: "white", fontWeight: 800 }} formatter={(value, name) => [`${value}分`, name]} labelFormatter={(label, payload) => { const item = payload?.[0]?.payload; return item?.match ? `${label} · ${item.match}` : label; }} /><Legend wrapperStyle={{ color: "rgba(203,213,225,0.8)", fontSize: 12 }} />{players.map((player, index) => <Line key={player.id} type="monotone" dataKey={player.id} name={`${player.avatar} ${player.name}`} stroke={lineColors[index % lineColors.length]} strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} connectNulls />)}</LineChart></ResponsiveContainer></div></Card>;
+}
+
+function AdminPanel({ matches, players, predictions, updateMatchResult, toggleLock, funResults, onSetFunResults }) {
+  return (
+    <section className="mt-6 space-y-5">
+      <FunResultsCard funResults={funResults} onSetFunResults={onSetFunResults} />
+      <div className="grid gap-5 lg:grid-cols-2">
+        <Card>
+          <h2 className="text-xl font-black">管理员：填写赛果 / 锁定比赛</h2>
+          <p className="mb-4 text-sm text-slate-400">原型中手动填写比分后自动结算。正式版可以接 API 或后台录入。</p>
+          <div className="space-y-3">{matches.map((match) => <AdminMatchRow key={match.id} match={match} onResult={updateMatchResult} onToggleLock={toggleLock} />)}</div>
+        </Card>
+        <Card>
+          <h2 className="text-xl font-black">结算预览</h2>
+          <p className="mb-4 text-sm text-slate-400">选择任意已结算比赛，查看该场所有玩家得分。</p>
+          <div className="space-y-3">
+            {matches.filter(isSettledMatch).map((match) => (
+              <div key={match.id} className="rounded-2xl border border-slate-700 bg-slate-950 p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <div className="font-black">{teamName(match.home)} {match.homeScore}:{match.awayScore} {teamName(match.away)}</div>
+                    <div className="text-xs text-slate-500">{(STAGES[match.stage] || STAGES.GROUP).label} · 倍率 x{(STAGES[match.stage] || STAGES.GROUP).multiplier}</div>
+                  </div>
+                  <Pill className="bg-emerald-500/15 text-emerald-200">已结算</Pill>
+                </div>
+                <div className="space-y-2">
+                  {players.map((player) => {
+                    const pred = predictions.find((p) => p.playerId === player.id && p.matchId === match.id);
+                    return <div key={player.id} className="flex items-center justify-between rounded-xl bg-slate-900 px-3 py-2 text-sm"><span>{player.avatar} {player.name}</span><span className="text-slate-500">{pred ? `${pred.home}:${pred.away}` : "未竞猜"}</span><span className="font-black">+{calculatePoints(pred, match)}</span></div>;
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+    </section>
+  );
+}
+
+function AdminMatchRow({ match, onResult, onToggleLock }) {
+  const [homeScore, setHomeScore] = useState(match.homeScore ?? "");
+  const [awayScore, setAwayScore] = useState(match.awayScore ?? "");
+  React.useEffect(() => { setHomeScore(match.homeScore ?? ""); setAwayScore(match.awayScore ?? ""); }, [match.homeScore, match.awayScore]);
+  const canToggle = match.status !== "settled";
+  const stage = STAGES[match.stage] || STAGES.GROUP;
+  return <div className="rounded-2xl border border-slate-700 bg-slate-950 p-4"><div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between"><div><div className="mb-2 flex flex-wrap gap-2"><Pill className="bg-slate-800 text-slate-300">#{match.no}</Pill><Pill className="bg-indigo-500/15 text-indigo-200">{stage.label} x{stage.multiplier}</Pill><MatchStatus match={match} /></div><div className="font-black">{teamName(match.home)} vs {teamName(match.away)}</div><div className="text-xs text-slate-500">{formatDateTime(match.kickoff)}</div></div><div className="flex items-center gap-2"><input type="number" min="0" value={homeScore} onChange={(e) => setHomeScore(e.target.value)} className="w-16 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-center font-black outline-none" /><span className="text-slate-500">:</span><input type="number" min="0" value={awayScore} onChange={(e) => setAwayScore(e.target.value)} className="w-16 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-center font-black outline-none" /><button onClick={() => onResult(match.id, Number(homeScore), Number(awayScore))} className="rounded-xl bg-emerald-700 px-3 py-2 text-sm font-black text-emerald-50 transition hover:scale-105 hover:bg-emerald-600">结算</button><DarkButton disabled={!canToggle} onClick={() => onToggleLock(match.id)} className="px-3 py-2 text-sm font-black">{match.status === "open" ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}</DarkButton></div></div></div>;
+}
+
+function RulesPanel() {
+  return <section className="mt-6 space-y-5"><Card><h2 className="text-2xl font-black">正式规则确认版</h2><p className="mt-2 text-sm leading-relaxed text-slate-400">本系统只计算90分钟常规时间比分，包含伤停补时，不包含加时赛和点球大战。开赛前可以反复修改，开赛后自动锁定。</p></Card><div className="grid gap-5 lg:grid-cols-2"><Card><h3 className="mb-4 text-xl font-black">基础得分</h3><div className="space-y-3">{[["完全猜中比分", "4分"], ["猜中胜平负，并且猜中净胜球", "2分"], ["猜中胜平负，但比分不完全正确", "1分"], ["完全猜错", "0分"]].map(([label, value]) => <div key={label} className="flex items-center justify-between rounded-2xl bg-slate-800/60 p-4"><span>{label}</span><span className="text-2xl font-black">{value}</span></div>)}</div></Card><Card><h3 className="mb-4 text-xl font-black">淘汰赛倍率</h3><div className="space-y-3">{Object.entries(STAGES).map(([key, value]) => <div key={key} className="flex items-center justify-between rounded-2xl bg-slate-800/60 p-4"><span>{value.label}</span><span className="text-2xl font-black">x{value.multiplier}</span></div>)}</div></Card></div><Card><h3 className="mb-4 text-xl font-black">各阶段最高得分</h3><div className="overflow-hidden rounded-2xl border border-slate-700"><table className="w-full min-w-[760px] text-left text-sm"><thead className="bg-slate-800 text-slate-400"><tr><th className="px-4 py-3">阶段</th><th className="px-4 py-3">倍率</th><th className="px-4 py-3">完全比分</th><th className="px-4 py-3">胜平负+净胜球</th><th className="px-4 py-3">只中胜平负</th><th className="px-4 py-3">猜错</th></tr></thead><tbody>{Object.entries(STAGES).map(([key, value]) => <tr key={key} className="border-t border-slate-700 bg-slate-950/60"><td className="px-4 py-4 font-black">{value.label}</td><td className="px-4 py-4">x{value.multiplier}</td><td className="px-4 py-4">{4 * value.multiplier}分</td><td className="px-4 py-4">{2 * value.multiplier}分</td><td className="px-4 py-4">{1 * value.multiplier}分</td><td className="px-4 py-4">0分</td></tr>)}</tbody></table></div></Card></section>;
+}
